@@ -732,6 +732,145 @@ function renderFeatures() {
   });
 }
 
+// Phase 14 Competitor Monitor
+let snapshots = [];
+
+async function loadSnapshots() {
+  const data = await new Promise(r => chrome.storage.local.get(['competitorSnapshots'], d => r(d)));
+  snapshots = data.competitorSnapshots || [];
+  return snapshots;
+}
+
+async function saveSnapshots(snaps) {
+  await new Promise(r => chrome.storage.local.set({competitorSnapshots: snaps}, r));
+  snapshots = snaps;
+}
+
+function captureSnapshot(pd) {
+  return {
+    snapshotId: 'snap-' + Date.now() + '-' + Math.random().toString(36).slice(2, 5),
+    productId: pd.productId || pd.id || 'current',
+    title: pd.title || '',
+    price: pd.price || '',
+    sold: pd.sold || '',
+    shopName: pd.shopName || '',
+    rating: pd.rating || '',
+    url: pd.url || '',
+    capturedAt: Date.now()
+  };
+}
+
+function compareSnapshots(oldSnap, newSnap) {
+  const changes = [];
+  const parseP = (p) => parseFloat((p || '').replace(/[^0-9.]/g, '')) || 0;
+  const oldPrice = parseP(oldSnap.price);
+  const newPrice = parseP(newSnap.price);
+  if (newPrice > oldPrice) changes.push(`價格上升 ${oldPrice}→${newPrice}`);
+  else if (newPrice < oldPrice) changes.push(`價格下降 ${oldPrice}→${newPrice}`);
+  if (oldSnap.sold !== newSnap.sold) changes.push('銷量變化');
+  if (oldSnap.title !== newSnap.title) changes.push('標題變化');
+  if (oldSnap.shopName !== newSnap.shopName) changes.push('店家變化');
+  return changes;
+}
+
+function renderMonitor() {
+  const div = document.getElementById('competitor-monitor');
+  if (!div) return;
+  div.innerHTML = '<strong>最近快照 (最多20):</strong><br>';
+  if (snapshots.length === 0) {
+    div.innerHTML += '無快照<br>';
+    return;
+  }
+  const recent = [...snapshots].slice(0, 20);
+  recent.forEach((s, i) => {
+    let html = `${new Date(s.capturedAt).toLocaleTimeString()} ${s.title} ${s.price} 已售${s.sold}`;
+    if (i < recent.length - 1) {
+      const prev = recent[i + 1]; // older
+      const ch = compareSnapshots(prev, s);
+      if (ch.length) html += ' (' + ch.join(', ') + ')';
+    }
+    div.innerHTML += html + '<br>';
+  });
+}
+
+async function addSnapshot() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+      const data = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }).catch(() => null);
+      if (data) {
+        const snap = captureSnapshot(data);
+        snapshots.unshift(snap);
+        if (snapshots.length > 20) snapshots.pop();
+        await saveSnapshots(snapshots);
+        renderMonitor();
+        showResultWithMeta(`新增快照: ${snap.title} ${snap.price}`, { feature: '競品快照' });
+        updateStatus({ task: '競品快照已新增' });
+      }
+    }
+  } catch (e) {
+    showResultWithMeta('無法抓取快照: ' + (e.message || e), { feature: '競品快照' });
+  }
+}
+
+async function refreshCompare() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+      const data = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }).catch(() => null);
+      if (data && snapshots.length > 0) {
+        const newSnap = captureSnapshot(data);
+        const oldSnap = snapshots[0];
+        const changes = compareSnapshots(oldSnap, newSnap);
+        snapshots.unshift(newSnap);
+        if (snapshots.length > 20) snapshots.pop();
+        await saveSnapshots(snapshots);
+        renderMonitor();
+        let msg = `重新擷取: ${newSnap.title} ${newSnap.price}\n`;
+        if (changes.length) msg += '變化: ' + changes.join(', ') + '\n需要調價建議: ' + (changes.some(c => c.includes('下降')) ? '考慮降價競爭' : '價格優勢保持');
+        else msg += '無變化';
+        showResultWithMeta(msg, { feature: '競品比較' });
+        updateStatus({ task: '價格變動比較完成' });
+      } else {
+        showResultWithMeta('需要至少一個現有快照', { feature: '競品比較' });
+      }
+    }
+  } catch (e) {
+    showResultWithMeta('比較失敗: ' + (e.message || e), { feature: '競品比較' });
+  }
+}
+
+function exportSnapshotsCSV() {
+  if (!snapshots.length) {
+    alert('無快照可匯出');
+    return;
+  }
+  const header = 'snapshotId,productId,title,price,sold,shopName,rating,url,capturedAt\n';
+  const lines = snapshots.map(s =>
+    `"${s.snapshotId}","${s.productId}","${(s.title || '').replace(/"/g, '""')}","${s.price}","${s.sold}","${(s.shopName || '').replace(/"/g, '""')}","${s.rating}","${s.url}",${s.capturedAt}`
+  );
+  const bom = '\uFEFF';
+  const csv = bom + header + lines.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'competitor-snapshots.csv';
+  a.click();
+  showResultWithMeta('已匯出 competitor-snapshots.csv (含 BOM)', { feature: '競品匯出' });
+}
+
+async function initCompetitorMonitor() {
+  await loadSnapshots();
+  renderMonitor();
+  const addBtn = document.getElementById('btn-snapshot-add');
+  const refreshBtn = document.getElementById('btn-snapshot-refresh');
+  const exportBtn = document.getElementById('btn-snapshot-export');
+  if (addBtn) addBtn.onclick = addSnapshot;
+  if (refreshBtn) refreshBtn.onclick = refreshCompare;
+  if (exportBtn) exportBtn.onclick = exportSnapshotsCSV;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[SidePanel] DOMContentLoaded, starting render...');
   loadHistory();
@@ -739,6 +878,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderFeatures();
   initTemplates();
   initWorkflows();
+  initCompetitorMonitor();
 
   // #6 refresh status button + #3 full page data
   const refreshBtn = document.getElementById('btn-refresh-status');
