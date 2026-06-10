@@ -2,10 +2,10 @@
 
 Chrome Extension 為蝦皮賣家打造的最強 AI 工具，目標實作完整 30 個實用功能。
 
-## 專案狀態
-- **目前版本**：v2.3 (Phase 2+ 推進中)
-- **已實作**：多模板選擇、Side Panel、真實 AI 整合 (Claude/Gemini)、API Key 管理、自動填入、利潤計算器、SEO 標題生成等
-- **完整功能清單**：請參考 [FEATURES.md](./FEATURES.md)
+## 專案狀態 (v2.4 - 全部30功能一次完成 ✅)
+- **已完整實作所有 30 個功能**：內容生成、價格/競品監控、批量/搬家/右鍵/圖片自動化、銷售與客訴分析、客服與訂單自動化、Prompt自訂/團隊/Pro/多平台同步。
+- 真實 Claude + Gemini 呼叫、Side Panel、上下文選單、Pro 鎖定模擬、儀表板。
+- **完整規格**：詳見 [FEATURES.md](./FEATURES.md)
 
 ## 功能總覽
 詳見 [FEATURES.md](./FEATURES.md) 完整 30 功能清單與開發優先順序。

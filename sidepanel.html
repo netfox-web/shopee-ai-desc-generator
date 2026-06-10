@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Shopee AI - 完整 Side Panel (30功能)</title>
+  <style>body{padding:12px;font-family:system-ui;font-size:13px} .dash{margin:8px 0;padding:8px;background:#f8f9fa;border-radius:4px}</style>
+</head>
+<body>
+  <h2>🤖 Shopee AI Side Panel v2.4</h2>
+  <p>完整版儀表板 + 所有功能入口。支援即時監控與批量。</p>
+  
+  <div class="dash">
+    <strong>快速操作</strong><br>
+    <button onclick="chrome.runtime.sendMessage({action:'startPriceMonitor'})">啟動價格監控</button>
+    <button onclick="chrome.runtime.sendMessage({action:'getAnalytics'}, r => alert(JSON.stringify(r)))">載入分析</button>
+  </div>
+
+  <div id="monitor-status">監控狀態: 未啟動</div>
+  
+  <h4>所有30功能 (點擊使用)</h4>
+  <div id="all-features"></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

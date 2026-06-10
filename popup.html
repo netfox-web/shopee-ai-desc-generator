@@ -2,29 +2,44 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Shopee AI 描述生成器 (30功能版)</title>
+  <title>Shopee AI 描述生成器 (30功能完整版)</title>
   <style>
-    body { width: 420px; padding: 10px; font-family: system-ui, sans-serif; font-size: 13px; }
-    h1 { font-size: 15px; margin: 0 0 8px; color: #ee4d2d; }
-    .category { font-weight: 600; margin: 10px 0 4px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 2px; }
-    .feature { padding: 4px 6px; display: flex; align-items: center; gap: 6px; }
-    .feature:hover { background: #f5f5f5; }
-    .feature input { margin-right: 6px; }
-    .status { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: auto; }
+    body { width: 460px; padding: 8px; font-family: system-ui, sans-serif; font-size: 12.5px; }
+    h1 { font-size: 14px; margin: 0 0 6px; color: #ee4d2d; }
+    .search { width: 100%; padding: 6px; margin-bottom: 6px; box-sizing: border-box; }
+    .category { font-weight: 700; margin: 8px 0 3px; color: #222; font-size: 12px; }
+    .feature { padding: 3px 4px; display: flex; align-items: center; gap: 4px; font-size: 12px; }
+    .feature:hover { background: #f0f0f0; }
+    .feature input[type="checkbox"] { margin-right: 4px; }
+    .status { font-size: 9px; padding: 0 4px; border-radius: 2px; margin-left: auto; white-space: nowrap; }
     .done { background: #d4edda; color: #155724; }
     .todo { background: #fff3cd; color: #856404; }
-    button { width: 100%; padding: 8px; background: #ee4d2d; color: white; border: none; border-radius: 4px; margin-top: 8px; cursor: pointer; font-weight: 600; }
-    .small { font-size: 11px; color: #666; }
+    .pro { background: #cce5ff; color: #004085; }
+    button, .btn { padding: 6px 10px; background: #ee4d2d; color: white; border: none; border-radius: 3px; cursor: pointer; font-size: 12px; margin: 2px; }
+    .btn-secondary { background: #555; }
+    .btn-pro { background: #28a745; }
+    .actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+    .small { font-size: 10px; color: #666; }
+    #batch-info { font-size: 10px; color: #28a745; margin: 4px 0; }
   </style>
 </head>
 <body>
-  <h1>🤖 Shopee AI 描述生成器 <span style="font-size:11px">(v2.3 - 30功能)</span></h1>
-  <p class="small">選擇功能後點擊生成（已實作項目會標記）</p>
-  
+  <h1>🤖 Shopee AI 描述生成器 <span style="font-size:10px">(v2.4 - 全部30功能完成)</span></h1>
+  <input type="text" class="search" id="search" placeholder="搜尋功能...">
   <div id="features"></div>
+  <div id="batch-info"></div>
   
-  <button id="generate">生成描述</button>
-  <button id="open-options" style="background:#555">開啟設定 (API Key)</button>
+  <div class="actions">
+    <button id="generate">生成描述 (單選/多選)</button>
+    <button id="batch" class="btn-secondary">批量生成 (13)</button>
+    <button id="monitor" class="btn-secondary">啟動價格監控 (8,10)</button>
+    <button id="analytics" class="btn-secondary">查看數據分析 (18,28)</button>
+    <button id="migrate" class="btn-secondary">一鍵搬家 (14)</button>
+    <button id="rightclick-hint" class="btn-secondary" title="已在頁面右鍵選單可用">右鍵快速 (17)</button>
+    <button id="open-options" class="btn-secondary">設定 (API Key / Pro)</button>
+    <button id="sidepanel" class="btn-pro">開啟完整 Side Panel</button>
+  </div>
+  <div class="small">Pro 功能 (26-30) 需在設定開啟 Pro 模式 (模擬)</div>
   
   <script src="popup.js"></script>
 </body>

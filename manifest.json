@@ -1,17 +1,25 @@
 {
   "manifest_version": 3,
   "name": "Shopee AI 描述生成器 (30功能版)",
-  "version": "1.0.0",
-  "description": "為 Shopee 賣家提供 30 種 AI 智能描述生成功能，支援多語言、SEO 優化、A/B 測試等。",
+  "version": "2.4.0",
+  "description": "為 Shopee 賣家提供 30 種 AI 智能描述生成功能，支援批量、監控、搬家、多語言、SEO、利潤分析、Pro 功能等。完整實現所有 Phase。",
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "contextMenus",
+    "alarms",
+    "notifications",
+    "downloads",
+    "tabs",
+    "sidePanel"
   ],
   "host_permissions": [
     "https://shopee.tw/*",
     "https://shopee.com/*",
-    "https://*.shopee.*/*"
+    "https://*.shopee.*/*",
+    "https://api.anthropic.com/*",
+    "https://generativelanguage.googleapis.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -37,9 +45,21 @@
     }
   },
   "options_page": "options.html",
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "commands": {
+    "_execute_action": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+A",
+        "mac": "Command+Shift+A"
+      },
+      "description": "Open Shopee AI Generator"
+    }
   }
 }

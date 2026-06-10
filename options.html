@@ -2,13 +2,30 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Shopee AI 描述生成器 - 設定</title>
+  <title>Shopee AI 描述生成器 - 進階設定 (30功能)</title>
+  <style>body{font-family:system-ui;padding:16px;max-width:520px} label{display:block;margin:8px 0 2px} input{width:100%;padding:6px;margin-bottom:8px}</style>
 </head>
 <body>
-  <h1>進階設定</h1>
-  <p>API Key 設定 (未來支援 Gemini / 自有後端)</p>
-  <input type="text" id="api-key" placeholder="輸入 API Key">
-  <button id="save">儲存</button>
+  <h1>進階設定 v2.4</h1>
+  <h3>AI Keys (至少填一個即可使用全部30功能)</h3>
+  <label>Claude API Key (推薦)</label>
+  <input type="password" id="claude-key" placeholder="sk-ant-...">
+  <label>Gemini API Key</label>
+  <input type="password" id="gemini-key" placeholder="AIza...">
+  
+  <h3>Pro 模式 (解鎖 26-30 進階功能)</h3>
+  <label><input type="checkbox" id="pro"> 啟用 Pro 會員 (本地模擬)</label>
+  
+  <h3>其他</h3>
+  <label>預設偏好模型</label>
+  <select id="prefer">
+    <option value="claude">優先 Claude</option>
+    <option value="gemini">優先 Gemini</option>
+  </select>
+  
+  <button id="save" style="margin-top:12px;padding:8px 16px">儲存所有設定</button>
+  <div id="status" style="margin-top:8px;color:green"></div>
+  
   <script src="options.js"></script>
 </body>
 </html>
