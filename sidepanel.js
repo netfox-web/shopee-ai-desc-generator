@@ -297,6 +297,216 @@ async function initTemplates() {
   if (btnReset) btnReset.onclick = resetTemplates;
   if (sel) sel.onchange = () => console.log('[Template] selected', getSelectedTemplate());
 }
+
+const BUILTIN_WORKFLOWS = [
+  {
+    workflowId: 'wf-single-optimize',
+    name: '單品快速優化',
+    description: '抓商品資料 → SEO 標題 → 廣告文案 → 促銷文案',
+    steps: [
+      {type: 'action', name: 'getProductData'},
+      {type: 'feature', id: 4},
+      {type: 'feature', id: 2},
+      {type: 'feature', id: 6}
+    ],
+    targetPageType: 'shopee-product-page',
+    isDefault: true,
+    isPro: false,
+    updatedAt: Date.now()
+  },
+  {
+    workflowId: 'wf-batch-prep',
+    name: '批量上架準備',
+    description: '抓列表商品 → 批量描述 → CSV 匯出',
+    steps: [
+      {type: 'action', name: 'getProductList'},
+      {type: 'feature', id: 13},
+      {type: 'action', name: 'exportCSV'}
+    ],
+    targetPageType: 'shopee-seller-product-list',
+    isDefault: true,
+    isPro: false,
+    updatedAt: Date.now()
+  },
+  {
+    workflowId: 'wf-competitor',
+    name: '競品分析',
+    description: '抓商品資料 → 競品分析 → AI 建議售價',
+    steps: [
+      {type: 'action', name: 'getProductData'},
+      {type: 'feature', id: 12},
+      {type: 'feature', id: 9}
+    ],
+    targetPageType: 'shopee-product-page',
+    isDefault: true,
+    isPro: false,
+    updatedAt: Date.now()
+  },
+  {
+    workflowId: 'wf-review-reply',
+    name: '客服回覆',
+    description: '抓評價 → 評價回覆 → 複製結果',
+    steps: [
+      {type: 'action', name: 'getReviews'},
+      {type: 'feature', id: 7},
+      {type: 'action', name: 'copyResult'}
+    ],
+    targetPageType: 'shopee-product-page',
+    isDefault: true,
+    isPro: false,
+    updatedAt: Date.now()
+  }
+];
+
+let currentQueue = [];
+let isRunning = false;
+let cancelRequested = false;
+
+function renderWorkflowSelect() {
+  const sel = document.getElementById('workflow-select');
+  if (!sel) return;
+  sel.innerHTML = '';
+  BUILTIN_WORKFLOWS.forEach(w => {
+    const opt = document.createElement('option');
+    opt.value = w.workflowId;
+    opt.textContent = w.name;
+    sel.appendChild(opt);
+  });
+}
+
+function updateQueueUI() {
+  const div = document.getElementById('workflow-queue');
+  if (!div) return;
+  div.innerHTML = '<strong>任務佇列:</strong><br>';
+  if (currentQueue.length === 0) {
+    div.innerHTML += '無佇列<br>';
+    return;
+  }
+  currentQueue.forEach((step, i) => {
+    let status = step.status || '待執行';
+    div.innerHTML += `${i+1}. ${step.name || step.type} [${status}] `;
+    if (status === '失敗') {
+      const retryBtn = document.createElement('button');
+      retryBtn.textContent = '重試';
+      retryBtn.style.fontSize = '9px';
+      retryBtn.onclick = () => retryStep(i);
+      div.appendChild(retryBtn);
+    }
+    div.innerHTML += '<br>';
+  });
+}
+
+async function executeWorkflow(workflowId) {
+  if (isRunning) return;
+  isRunning = true;
+  cancelRequested = false;
+  const wf = BUILTIN_WORKFLOWS.find(w => w.workflowId === workflowId);
+  if (!wf) { isRunning = false; return; }
+  currentQueue = wf.steps.map(s => ({...s, status: '待執行', result: null, name: s.type + (s.id ? '-'+s.id : '') }));
+  updateQueueUI();
+  updateStatus({ task: `執行工作流: ${wf.name}`, loading: true });
+  let successCount = 0, failCount = 0;
+  let outputs = [];
+  const startTime = Date.now();
+  let productData = { title: '側邊欄測試商品', category: 'Shopee商品', specs: '', price: 'NT$299' };
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (tab) {
+      const data = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }).catch(() => null);
+      if (data) productData = { ...productData, ...data };
+    }
+  } catch (e) {}
+  for (let i = 0; i < currentQueue.length; i++) {
+    if (cancelRequested) {
+      currentQueue[i].status = '跳過';
+      break;
+    }
+    const step = currentQueue[i];
+    step.status = '執行中';
+    updateQueueUI();
+    updateStatus({ task: `步驟 ${i+1}: ${step.type}`, loading: true });
+    try {
+      let res = '';
+      if (step.type === 'feature') {
+        const reg = FEATURE_REGISTRY[step.id];
+        if (reg && reg.handler) {
+          res = await reg.handler(productData);
+        } else {
+          const resp = await chrome.runtime.sendMessage({ action: 'generateDescription', productData, featureId: step.id });
+          res = resp && resp.description ? resp.description : '';
+        }
+      } else if (step.type === 'action') {
+        if (step.name === 'getProductData') {
+          res = '已抓取商品資料: ' + (productData.title || '');
+        } else if (step.name === 'getProductList') {
+          res = '已抓取列表 (模擬)';
+        } else if (step.name === 'exportCSV') {
+          const csv = 'id,title\n1,"test"';
+          const blob = new Blob([csv], {type:'text/csv'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'workflow-export.csv'; a.click();
+          res = '已匯出 workflow-export.csv';
+        } else if (step.name === 'copyResult') {
+          const last = document.getElementById('result-text') ? document.getElementById('result-text').value : '';
+          if (last) await navigator.clipboard.writeText(last);
+          res = '已複製結果';
+        } else if (step.name === 'getReviews') {
+          res = '已抓取評價 (模擬)';
+        }
+      }
+      step.status = '成功';
+      step.result = res;
+      outputs.push(res);
+      successCount++;
+      showResultWithMeta( (document.getElementById('result-text') ? document.getElementById('result-text').value : '') + '\n\n[工作流步驟 ' + (i+1) + ' 完成]\n' + res , {feature: '工作流'} );
+    } catch (err) {
+      step.status = '失敗';
+      step.result = err.message || '錯誤';
+      failCount++;
+      showResultWithMeta( (document.getElementById('result-text') ? document.getElementById('result-text').value : '') + '\n\n[工作流步驟 ' + (i+1) + ' 失敗]\n' + (err.message || err) , {feature: '工作流'} );
+    }
+    updateQueueUI();
+    updateStatus({ task: `步驟 ${i+1} 完成`, loading: false });
+    if (cancelRequested) break;
+  }
+  const endTime = Date.now();
+  const summary = `工作流 ${wf.name} 完成\n成功: ${successCount} 失敗: ${failCount}\n耗時: ${endTime - startTime}ms\n\n輸出:\n` + outputs.join('\n---\n');
+  showResultWithMeta(summary, {feature: wf.name});
+  chrome.storage.local.set({ lastWorkflow: { id: wf.workflowId, summary, time: endTime } });
+  isRunning = false;
+  updateStatus({ task: '工作流完成' });
+}
+
+function retryStep(idx) {
+  if (!currentQueue[idx] || currentQueue[idx].status !== '失敗') return;
+  currentQueue[idx].status = '待執行';
+  updateQueueUI();
+  alert('已標記重試，請重新執行整個工作流 (MVP 簡化處理)');
+}
+
+async function initWorkflows() {
+  renderWorkflowSelect();
+  currentQueue = [];
+  updateQueueUI();
+  const sel = document.getElementById('workflow-select');
+  const runBtn = document.getElementById('btn-workflow-run');
+  const cancelBtn = document.getElementById('btn-workflow-cancel');
+  if (runBtn) runBtn.onclick = async () => {
+    if (!sel || !sel.value) return;
+    await executeWorkflow(sel.value);
+  };
+  if (cancelBtn) cancelBtn.onclick = () => {
+    cancelRequested = true;
+    updateStatus({ task: '取消請求' });
+  };
+  chrome.storage.local.get(['lastWorkflow'], (d) => {
+    if (d.lastWorkflow) {
+      // can show in console or status
+    }
+  });
+}
+
 function showResultWithMeta(text, meta) {
   const metaEl = document.getElementById('result-meta');
   if (metaEl) {
@@ -528,6 +738,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadEntitlement();
   renderFeatures();
   initTemplates();
+  initWorkflows();
 
   // #6 refresh status button + #3 full page data
   const refreshBtn = document.getElementById('btn-refresh-status');
