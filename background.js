@@ -138,6 +138,25 @@ function generateSmartMock(productData, featureId) {
   }
 }
 
+// Event recording for Phase 10 Analytics (local only, no sensitive data)
+function recordUsageEvent(event) {
+  chrome.storage.local.get(['usageEvents'], (res) => {
+    let events = res.usageEvents || [];
+    events.unshift(event);
+    if (events.length > 100) events = events.slice(0, 100); // keep last 100
+    chrome.storage.local.set({ usageEvents: events });
+  });
+}
+
+function getCategoryForFeature(featureId) {
+  if ([1,2,3,4,5,6,7].includes(featureId)) return '內容生成類';
+  if ([8,9,10,11,12].includes(featureId)) return '定價與競爭';
+  if ([13,14,15,16,17].includes(featureId)) return '自動化';
+  if ([18,19,20,21].includes(featureId)) return '數據分析';
+  if ([22,23,24,25].includes(featureId)) return '顧客與訂單';
+  return '進階與變現';
+}
+
 // #7 Secure AI Gateway (issued key only, NEVER raw provider keys in extension or logs)
 async function callGateway(productData, featureId, gateway) {
   if (!gateway || !gateway.url) throw new Error('Gateway not configured');
@@ -224,7 +243,28 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return;
       }
       // #7 Use gateway-first path (secure, no raw keys in extension for prod)
+      const startTime = Date.now();
       const desc = await generateWithGatewayOrMock(request.productData, request.featureId);
+      const endTime = Date.now();
+      const durationMs = endTime - startTime;
+
+      // Record event (Phase 10)
+      const mode = (await new Promise(r => chrome.storage.local.get(['gatewayUrl'], d => r(!!d.gatewayUrl)))) ? 'Gateway' : 'Mock';
+      recordUsageEvent({
+        eventId: 'evt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        featureId: request.featureId,
+        featureName: `feature-${request.featureId}`,
+        category: getCategoryForFeature(request.featureId),
+        pageType: request.productData.pageType || 'unknown',
+        productId: request.productData.productId || request.productData.id || null,
+        mode: mode,
+        status: 'success',
+        startedAt: startTime,
+        endedAt: endTime,
+        durationMs: durationMs,
+        outputLength: desc ? desc.length : 0
+      });
+
       sendResponse({ success: true, description: desc, featureId: request.featureId });
     });
     return true;
@@ -252,9 +292,45 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'getAnalytics') {
-    // Feature 18,28
-    chrome.storage.local.get(['usageStats', 'salesData'], (data) => {
-      sendResponse({ success: true, stats: data.usageStats || {}, sales: data.salesData || '無數據' });
+    // Enhanced for Phase 10 Analytics
+    chrome.storage.local.get(['usageStats', 'usageEvents', 'salesData'], (data) => {
+      const events = data.usageEvents || [];
+      // Compute simple stats from events
+      const now = Date.now();
+      const todayStart = new Date().setHours(0,0,0,0);
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+
+      const todayEvents = events.filter(e => e.startedAt >= todayStart);
+      const monthEvents = events.filter(e => e.startedAt >= monthStart);
+
+      const byFeature = {};
+      events.forEach(e => {
+        byFeature[e.featureId] = (byFeature[e.featureId] || 0) + 1;
+      });
+      const topFeatures = Object.entries(byFeature).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([id,count]) => ({featureId: id, count}));
+
+      const mockCount = events.filter(e => e.mode === 'Mock').length;
+      const gatewayCount = events.filter(e => e.mode === 'Gateway').length;
+      const total = events.length;
+      const failureCount = events.filter(e => e.status === 'error').length;
+
+      const computed = {
+        today: todayEvents.length,
+        month: monthEvents.length,
+        total,
+        topFeatures,
+        modeRatio: { Mock: mockCount, Gateway: gatewayCount },
+        failureRate: total ? (failureCount / total * 100).toFixed(1) + '%' : '0%',
+        recentEvents: events.slice(0, 20)
+      };
+
+      sendResponse({ 
+        success: true, 
+        stats: data.usageStats || {}, 
+        sales: data.salesData || '無數據',
+        events: events,
+        computed: computed
+      });
     });
     return true;
   }

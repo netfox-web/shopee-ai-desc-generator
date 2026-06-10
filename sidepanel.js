@@ -468,8 +468,53 @@ document.addEventListener('DOMContentLoaded', async () => {
       try {
         const res = await chrome.runtime.sendMessage({ action: 'getAnalytics' });
         console.log('[SidePanel] getAnalytics response:', res);
+
+        const c = res.computed || {};
+        let text = '=== 使用量統計儀表板 (Phase 10) ===\n';
+        text += `今日執行: ${c.today || 0}\n`;
+        text += `本月執行: ${c.month || 0}\n`;
+        text += `總計: ${c.total || 0}\n`;
+        text += `Mock / Gateway: ${c.modeRatio ? c.modeRatio.Mock : 0} / ${c.modeRatio ? c.modeRatio.Gateway : 0}\n`;
+        text += `失敗率: ${c.failureRate || '0%'}\n\n`;
+        text += '熱門功能排行:\n';
+        (c.topFeatures || []).forEach((f,i) => text += `  ${i+1}. Feature ${f.featureId}: ${f.count}\n`);
+        text += '\n最近事件 (最多20):\n';
+        (c.recentEvents || []).slice(0,5).forEach(e => {
+          text += `  [${new Date(e.startedAt).toLocaleTimeString()}] F${e.featureId} ${e.status} ${e.durationMs}ms\n`;
+        });
+
         updateStatus({ task: '分析完成', lastResult: '見結果區', loading: false });
-        showResultWithMeta('分析結果：\n' + JSON.stringify(res, null, 2), { feature: '載入分析' });
+        showResultWithMeta(text, { feature: '使用量統計儀表板' });
+
+        // Add export button dynamically if not present
+        const resultSection = document.getElementById('result-section');
+        if (resultSection && !document.getElementById('export-analytics')) {
+          const exportBtn = document.createElement('button');
+          exportBtn.id = 'export-analytics';
+          exportBtn.textContent = '匯出 usage-events.csv (BOM)';
+          exportBtn.style.marginTop = '4px';
+          exportBtn.onclick = () => {
+            const events = res.events || [];
+            if (!events.length) {
+              alert('無事件可匯出');
+              return;
+            }
+            const header = 'eventId,featureId,featureName,category,pageType,productId,mode,status,startedAt,endedAt,durationMs,outputLength\n';
+            const lines = events.map(e => 
+              `"${e.eventId}",${e.featureId},"${e.featureName}","${e.category}","${e.pageType}","${e.productId || ''}","${e.mode}","${e.status}",${e.startedAt},${e.endedAt},${e.durationMs},${e.outputLength || 0}`
+            );
+            const bom = '\uFEFF';
+            const csv = bom + header + lines.join('\n');
+            const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'usage-events.csv';
+            a.click();
+            updateStatus({ lastResult: '已匯出 usage-events.csv' });
+          };
+          resultSection.appendChild(exportBtn);
+        }
       } catch (err) {
         console.error('[SidePanel] getAnalytics error:', err);
         updateStatus({ task: '錯誤', error: err.message, loading: false });
