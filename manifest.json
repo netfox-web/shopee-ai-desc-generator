@@ -16,8 +16,23 @@
   ],
   "host_permissions": [
     "https://shopee.tw/*",
+    "https://*.shopee.tw/*",
     "https://shopee.com/*",
-    "https://*.shopee.*/*",
+    "https://*.shopee.com/*",
+    "https://shopee.sg/*",
+    "https://*.shopee.sg/*",
+    "https://shopee.my/*",
+    "https://*.shopee.my/*",
+    "https://shopee.ph/*",
+    "https://*.shopee.ph/*",
+    "https://shopee.vn/*",
+    "https://*.shopee.vn/*",
+    "https://shopee.co.id/*",
+    "https://*.shopee.co.id/*",
+    "https://shopee.co.th/*",
+    "https://*.shopee.co.th/*",
+    "https://seller.shopee.tw/*",
+    "https://*.seller.shopee.tw/*",
     "https://api.anthropic.com/*",
     "https://generativelanguage.googleapis.com/*"
   ],
@@ -28,8 +43,23 @@
     {
       "matches": [
         "https://shopee.tw/*",
+        "https://*.shopee.tw/*",
         "https://shopee.com/*",
-        "https://*.shopee.*/*"
+        "https://*.shopee.com/*",
+        "https://shopee.sg/*",
+        "https://*.shopee.sg/*",
+        "https://shopee.my/*",
+        "https://*.shopee.my/*",
+        "https://shopee.ph/*",
+        "https://*.shopee.ph/*",
+        "https://shopee.vn/*",
+        "https://*.shopee.vn/*",
+        "https://shopee.co.id/*",
+        "https://*.shopee.co.id/*",
+        "https://shopee.co.th/*",
+        "https://*.shopee.co.th/*",
+        "https://seller.shopee.tw/*",
+        "https://*.seller.shopee.tw/*"
       ],
       "js": ["content.js"],
       "css": ["content.css"],
@@ -37,21 +67,11 @@
     }
   ],
   "action": {
-    "default_popup": "popup.html",
-    "default_icon": {
-      "16": "icons/icon16.png",
-      "48": "icons/icon48.png",
-      "128": "icons/icon128.png"
-    }
+    "default_popup": "popup.html"
   },
   "options_page": "options.html",
   "side_panel": {
     "default_path": "sidepanel.html"
-  },
-  "icons": {
-    "16": "icons/icon16.png",
-    "48": "icons/icon48.png",
-    "128": "icons/icon128.png"
   },
   "commands": {
     "_execute_action": {
