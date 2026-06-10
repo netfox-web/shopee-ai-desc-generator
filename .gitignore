@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+.env
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.zip
+*.crx
+*.pem
+icons/*.png
