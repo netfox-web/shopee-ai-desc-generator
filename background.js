@@ -96,9 +96,32 @@ async function generateWithAI(productData, featureId, apiKeys) {
 }
 
 function generateSmartMock(productData, featureId) {
-  const base = productData.title || '優質商品';
-  const flavor = FEATURE_PROMPTS[featureId] ? FEATURE_PROMPTS[featureId].split('。')[0] : '高品質';
-  return `${base} - ${flavor}。${productData.specs || '適合各種場合'}。立即下單享優惠！`;
+  const title = (productData.title || '此商品').substring(0, 30);
+  const price = productData.price || 'NT$299';
+  switch (featureId) {
+    case 2: // 廣告文案一鍵生成
+      return `廣告文案一鍵生成\n\n建議文案 1：${title} 熱銷爆款！限時優惠，品質保證，千萬用戶推薦，立即下單享免運。\n\n建議文案 2：獨家${title}，高評價好物，省錢又實用，錯過可惜！\n\n關鍵字：${title} 熱賣 限時優惠 免運 爆款\n\n使用建議：適合 FB/蝦皮首頁廣告，搭配限時折扣使用效果佳。`;
+    case 4: // SEO 標題 + 關鍵字優化
+      return `SEO 標題 + 關鍵字優化\n\n建議標題 1：${title} | 官方正品 快速出貨 高評價\n建議標題 2：${title} 推薦 蝦皮熱銷款 24小時出貨\n建議標題 3：買${title} 就選我們 品質保證 售後完善\n\n關鍵字：${title}, 熱銷, 正品, 免運, 推薦\n\n使用建議：主標題控制在 60 字內，融入 2-3 個高搜尋關鍵字，描述前 150 字重複一次主關鍵字。`;
+    case 6: // 限時優惠 / 促銷文案
+      return `限時優惠 / 促銷文案\n\n建議文案 1：限時 24 小時！${title} 特價 ${price}，買一送一，數量有限，下單從速！\n\n建議文案 2：年中慶特惠，${title} 原價更高，現在只要 ${price}，再送精美小禮。\n\n關鍵字：限時優惠 特賣 折扣 秒殺\n\n使用建議：搭配倒數計時器與紅色按鈕，轉換率最高。`;
+    case 7: // 評價回覆自動生成
+      return `評價回覆自動生成\n\n建議回覆 1：感謝您的支持！很高興您喜歡${title}，如有任何問題隨時聯絡我們。\n\n建議回覆 2：親愛的買家，謝謝您給予的好評！您的肯定是我們前進的動力，期待再次為您服務。\n\n建議回覆 3：感謝評價！商品有任何使用疑問，歡迎私訊客服，我們會盡快協助。\n\n關鍵字：感謝 好評 回購 客服\n\n使用建議：依評價內容微調，負評務必道歉+解決方案+補償。`;
+    case 5: // 多語言翻譯
+      return `多語言翻譯\n\n繁體中文：${title} 高品質熱銷商品\nEnglish: ${title} Premium Quality Best Seller\nTiếng Việt: ${title} Hàng Chính Hãng Bán Chạy\nไทย: ${title} สินค้าขายดี คุณภาพเยี่ยม\n\n關鍵字：多語言 國際 翻譯\n\n使用建議：用於跨境或外籍買家，建議人工再校對品牌名與專業術語。`;
+    case 9: // AI 建議售價
+      const bp = parseInt((productData.price || '300').replace(/\D/g, '')) || 300;
+      return `AI 建議售價\n\n建議售價 1（保守）：NT$${bp}（低風險，適合新品測試）\n建議售價 2（平衡）：NT$${Math.round(bp * 1.15)}（市場主流，利潤與量兼顧）\n建議售價 3（激進）：NT$${Math.round(bp * 1.35)}（高端定位，強調獨特性）\n\n關鍵字：定價 利潤 競爭\n\n使用建議：參考競品後選擇平衡方案，監控銷量 3 天再微調。`;
+    case 11: // 利潤計算器
+      const sp = parseInt((productData.price || '300').replace(/\D/g, '')) || 300;
+      const c = 180, sh = 30, fe = Math.round(sp * 0.06);
+      const pr = sp - c - sh - fe;
+      const roiV = c > 0 ? ((pr / c) * 100).toFixed(0) : '0';
+      const sug = Math.round(sp * 1.25);
+      return `利潤計算器\n\n商品：${title}\n售價：NT$${sp}\n成本：NT$${c}（預估）\n運費：NT$${sh}\n平台手續費：約 NT$${fe}\n預估利潤：NT$${pr}\nROI：約 ${roiV}%\n\n建議：若想達到 50% ROI，可將售價調整至 NT$${sug} 或降低包材成本。\n\n使用建議：實際成本請填入真實數字，運費依宅配或超商調整。`;
+    default:
+      return `${title} 優質商品推薦。\n建議文案：${title} 品質優良，適合日常使用，值得信賴。\n關鍵字：${title} 推薦 熱賣\n使用建議：可直接用於商品描述或廣告。`;
+  }
 }
 
 // Handle all messages for 30 features

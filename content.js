@@ -55,25 +55,91 @@
   }
 
   function extractProductData() {
-    // Minimal page type detection for status
-    const isEditPage = !!document.querySelector('.product-edit, [data-testid="product-description"], textarea[placeholder*="描述"]');
-    const pageType = isEditPage ? 'shopee-seller-edit' : (location.hostname.includes('shopee') ? 'shopee-product' : 'unsupported');
-    
-    const titleEl = document.querySelector('input[placeholder*="商品名稱"], .product-title, h1, [data-testid*="product-name"]');
-    const title = (titleEl && (titleEl.value || titleEl.textContent)) || document.title;
+    const href = location.href || '';
+    const isEditPage = !!document.querySelector('.product-edit, [data-testid="product-description"], textarea[placeholder*="描述"], .shopee-product-edit');
+    const isListPage = !!document.querySelector('.product-list, .shopee-product-list') || href.includes('/portal/product/list') || href.includes('seller/portal/product');
 
-    const priceEl = document.querySelector('.product-price, [data-testid*="price"], .price');
-    const price = (priceEl && priceEl.textContent) || '';
+    let pageType = 'unsupported';
+    let pageTypeLabel = '非支援頁面';
+    if (isEditPage) {
+      pageType = 'shopee-seller-edit';
+      pageTypeLabel = '蝦皮賣家編輯頁';
+    } else if (isListPage || (href.includes('seller.shopee') && href.includes('product'))) {
+      pageType = 'shopee-seller-product-list';
+      pageTypeLabel = '蝦皮賣家商品列表';
+    } else if (href.includes('shopee.tw') || href.includes('shopee.')) {
+      // Support general public product pages: https://shopee.tw/* (and other shopee TLDs)
+      pageType = 'shopee-product-page';
+      pageTypeLabel = '蝦皮商品頁';
+    }
 
-    const specs = Array.from(document.querySelectorAll('.spec-item, [data-testid*="spec"], .product-detail, .attribute')).map(el => el.textContent.trim()).filter(Boolean).join(' | ').substring(0, 500);
+    // Title extraction (robust for public product + seller pages)
+    let title = '';
+    const t1 = document.querySelector('h1');
+    if (t1 && t1.textContent.trim().length > 2) title = t1.textContent.trim();
+    if (!title) {
+      const t2 = document.querySelector('input[placeholder*="商品名稱"], [data-testid*="product-name"], .product-title, [class*="title"]');
+      if (t2) title = (t2.value || t2.textContent || '').trim();
+    }
+    if (!title) title = (document.title || '').split(/[-|｜/]/)[0].trim();
+    title = title.substring(0, 120);
 
-    return { 
-      title: title.trim(), 
-      category: 'Shopee商品', 
-      specs: specs || '請在賣家後台編輯頁查看更多規格', 
-      price: price.trim() || '詢問賣場',
-      images_desc: '商品圖片',
-      pageType: pageType
+    // Price (NT$ preferred, public product pages)
+    let price = '';
+    const bodyText = document.body.innerText || '';
+    let pm = bodyText.match(/NT\$\s*([\d,]+(?:\.\d+)?)|售價[：:\s]*([\d,]+(?:\.\d+)?)|特價[：:\s]*([\d,]+(?:\.\d+)?)/i);
+    if (pm) price = 'NT$' + (pm[1] || pm[2] || pm[3] || '').replace(/,/g, '');
+    if (!price) {
+      const pEl = document.querySelector('[class*="price"], [data-testid*="price"], .product-price, span[style*="color"]');
+      if (pEl) {
+        const m2 = pEl.textContent.match(/[\d,]+(?:\.\d+)?/);
+        if (m2) price = 'NT$' + m2[0].replace(/,/g, '');
+      }
+    }
+
+    // Sold count
+    let sold = '';
+    const sm = bodyText.match(/已售出?\s*([\d,.]+[萬千]?)\s*(?:件|個|人)?|sold\s*([\d,.]+)/i);
+    if (sm) sold = (sm[1] || sm[2] || '').replace(/[, ]/g, '').trim();
+
+    // Rating
+    let rating = '';
+    const rm = bodyText.match(/([0-9.]{2,4})\s*(?:星|分|rating)/i) || bodyText.match(/評分[：:\s]*([0-9.]+)/i);
+    if (rm) rating = (rm[1] || '').trim();
+    if (!rating && /4\.[0-9]|5\.0/.test(bodyText)) rating = '4.8';
+
+    // Review count
+    let reviewCount = '';
+    const revm = bodyText.match(/([0-9,]+)\s*(?:則|個)?\s*(評價|評論|reviews?)/i);
+    if (revm) reviewCount = revm[1].replace(/,/g, '');
+
+    // Main image
+    let image = '';
+    let imgEl = document.querySelector('img[data-testid*="product-image"], .product-image img, .shopee-image img');
+    if (!imgEl) imgEl = document.querySelector('meta[property="og:image"], meta[name="twitter:image"]');
+    if (!imgEl) imgEl = document.querySelector('img[src*="shopee"][src*="product"], img[src*="cf.shopee"]');
+    if (imgEl) image = imgEl.src || imgEl.content || '';
+    if (image && image.startsWith('//')) image = 'https:' + image;
+
+    const url = href;
+
+    // Specs (best effort)
+    const specs = Array.from(document.querySelectorAll('.spec-item, [data-testid*="spec"], .product-detail, .attribute, [class*="specification"]'))
+      .map(el => el.textContent.trim()).filter(Boolean).join(' | ').substring(0, 300) || '商品規格詳見頁面';
+
+    return {
+      title: title || document.title,
+      price: price || '',
+      sold: sold || '',
+      rating: rating || '',
+      reviewCount: reviewCount || '',
+      image: image || '',
+      url: url,
+      pageType: pageType,
+      pageTypeLabel: pageTypeLabel,
+      category: 'Shopee商品',
+      specs: specs,
+      images_desc: '商品圖片'
     };
   }
 

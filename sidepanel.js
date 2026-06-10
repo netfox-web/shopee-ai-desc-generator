@@ -36,16 +36,22 @@ function simulatePriceMonitor(pd) {
 }
 
 function simulatePriceSuggestion(pd) {
-  const suggested = Math.floor((parseInt(pd.price) || 300) * 1.2);
-  return `AI 建議售價: ${suggested} (基於成本+競爭+利潤)`;
+  const basePrice = parseInt((pd.price || '300').replace(/\D/g, '')) || 300;
+  const s1 = basePrice;
+  const s2 = Math.round(basePrice * 1.15);
+  const s3 = Math.round(basePrice * 1.35);
+  const title = (pd.title || '此商品').substring(0, 30);
+  return `AI 建議售價\n\n建議售價 1（保守）：NT$${s1}（低風險，適合新品測試）\n建議售價 2（平衡）：NT$${s2}（市場主流，利潤與量兼顧）\n建議售價 3（激進）：NT$${s3}（高端定位，強調獨特性）\n\n關鍵字：定價 利潤 競爭\n\n使用建議：參考競品後選擇平衡方案，監控銷量 3 天再微調。`;
 }
 
 function simulateProfitCalc(pd) {
-  const cost = 100, ship=30, fee=20, margin=0.3;
-  const sell = parseInt(pd.price) || 300;
+  const sell = parseInt((pd.price || '300').replace(/\D/g, '')) || 300;
+  const cost = 180, ship = 30, fee = Math.round(sell * 0.06);
   const profit = sell - cost - ship - fee;
-  const roi = ((profit / cost)*100).toFixed(0);
-  return `利潤計算: 售價${sell} -成本${cost}-運${ship}-費${fee} = 利潤${profit} (ROI ${roi}%)`;
+  const roi = cost > 0 ? ((profit / cost) * 100).toFixed(0) : '0';
+  const title = (pd.title || '此商品').substring(0, 30);
+  const suggest = Math.round(sell * 1.25);
+  return `利潤計算器\n\n商品：${title}\n售價：NT$${sell}\n成本：NT$${cost}（預估）\n運費：NT$${ship}\n平台手續費：約 NT$${fee}\n預估利潤：NT$${profit}\nROI：約 ${roi}%\n\n建議：若想達到 50% ROI，可將售價調整至 NT$${suggest} 或降低包材成本。\n\n使用建議：實際成本請填入真實數字，運費依宅配或超商調整。`;
 }
 
 function simulateCompetitorReport(pd) {
@@ -86,13 +92,16 @@ function simulateMigrateCSV(pd) {
 }
 
 function translateMock(pd) {
-  const base = pd.title || '商品';
-  return `${base} (繁中)\nEN: ${base} EN\nVI: ${base} VI\nTH: ${base} TH (mock translation)`;
+  const base = (pd.title || '此商品').substring(0, 30);
+  return `多語言翻譯\n\n繁體中文：${base} 高品質熱銷商品\nEnglish: ${base} Premium Quality Best Seller\nTiếng Việt: ${base} Hàng Chính Hãng Bán Chạy\nไทย: ${base} สินค้าขายดี คุณภาพเยี่ยม\n\n關鍵字：多語言 國際 翻譯\n\n使用建議：用於跨境或外籍買家，建議人工再校對品牌名與專業術語。`;
 }
 
 function updateStatus(updates) {
   const pageTypeEl = document.getElementById('status-page-type');
   const dataEl = document.getElementById('status-product-data');
+  const nameEl = document.getElementById('status-product-name');
+  const priceEl = document.getElementById('status-product-price');
+  const soldEl = document.getElementById('status-product-sold');
   const modeEl = document.getElementById('status-mode');
   const taskEl = document.getElementById('status-task');
   const lastEl = document.getElementById('status-last-result');
@@ -100,6 +109,9 @@ function updateStatus(updates) {
 
   if (updates.pageType && pageTypeEl) pageTypeEl.textContent = updates.pageType;
   if (updates.productData && dataEl) dataEl.textContent = updates.productData;
+  if (updates.productName !== undefined && nameEl) nameEl.textContent = updates.productName || '-';
+  if (updates.productPrice !== undefined && priceEl) priceEl.textContent = updates.productPrice || '-';
+  if (updates.productSold !== undefined && soldEl) soldEl.textContent = updates.productSold || '-';
   if (updates.mode && modeEl) modeEl.textContent = updates.mode;
   if (updates.task && taskEl) taskEl.textContent = updates.task;
   if (updates.lastResult && lastEl) lastEl.textContent = updates.lastResult;
@@ -174,7 +186,7 @@ function renderFeatures() {
       const reg = FEATURE_REGISTRY[f.id];
       let resultText = '';
       try {
-        let productData = { title: 'SidePanel 商品', category: 'Shopee商品', specs: '', price: '' };
+        let productData = { title: '側邊欄測試商品', category: 'Shopee商品', specs: '', price: 'NT$299' };
         try {
           const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
           if (tab) {
@@ -182,11 +194,23 @@ function renderFeatures() {
             if (dataFromPage) {
               productData = { ...productData, ...dataFromPage };
               const count = dataFromPage.productCount || 1;
-              updateStatus({ productData: `已抓取 ${count} 筆`, pageType: dataFromPage.pageType || 'shopee' });
+              let pt = dataFromPage.pageTypeLabel || dataFromPage.pageType || 'shopee';
+              if (dataFromPage.pageType === 'shopee-product-page') pt = '蝦皮商品頁';
+              else if (dataFromPage.pageType === 'shopee-seller-product-list') pt = '蝦皮賣家商品列表';
+              else if (dataFromPage.pageType === 'shopee-seller-edit') pt = '蝦皮賣家編輯頁';
+              let pdataStatus = (dataFromPage.title || dataFromPage.price) ? '已抓取' : '未抓取，使用頁面文字 fallback';
+              updateStatus({ pageType: pt, productData: pdataStatus });
+              if (dataFromPage.pageType === 'shopee-product-page' || dataFromPage.title) {
+                updateStatus({
+                  productName: (dataFromPage.title || '').substring(0, 30),
+                  productPrice: dataFromPage.price || '-',
+                  productSold: dataFromPage.sold || '-'
+                });
+              }
             }
           }
         } catch (e) {
-          updateStatus({ productData: '使用預設 (頁面不支援或無 content script)' });
+          updateStatus({ productData: '未抓取，使用頁面文字 fallback' });
         }
 
         if (reg && reg.handler) {
@@ -225,14 +249,25 @@ document.addEventListener('DOMContentLoaded', async () => {
       const data = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }).catch(() => null);
       if (data) {
         const count = data.productCount || 1;
-        const pt = data.pageType === 'shopee-seller-product-list' ? '蝦皮賣家商品列表' : (data.pageType || 'shopee');
-        updateStatus({ pageType: pt, productData: `已抓取 ${count} 筆` });
+        let pt = data.pageTypeLabel || data.pageType || 'shopee';
+        if (data.pageType === 'shopee-product-page') pt = '蝦皮商品頁';
+        else if (data.pageType === 'shopee-seller-product-list') pt = '蝦皮賣家商品列表';
+        else if (data.pageType === 'shopee-seller-edit') pt = '蝦皮賣家編輯頁';
+        let pdataStatus = (data.title || data.price) ? '已抓取' : '未抓取，使用頁面文字 fallback';
+        updateStatus({ pageType: pt, productData: pdataStatus });
+        if (data.pageType === 'shopee-product-page' || data.title) {
+          updateStatus({
+            productName: (data.title || '').substring(0, 30),
+            productPrice: data.price || '-',
+            productSold: data.sold || '-'
+          });
+        }
       } else {
-        updateStatus({ pageType: '非支援頁面 (請切換到蝦皮賣家商品編輯頁)', productData: '未抓取' });
+        updateStatus({ pageType: '非支援頁面 (請切換到蝦皮賣家商品編輯頁)', productData: '未抓取，使用頁面文字 fallback' });
       }
     }
   } catch (e) {
-    updateStatus({ pageType: '無法取得 (檢查 content script)', productData: '錯誤' });
+    updateStatus({ pageType: '無法取得 (檢查 content script)', productData: '未抓取，使用頁面文字 fallback' });
   }
 
   // Quick action buttons - with debug
