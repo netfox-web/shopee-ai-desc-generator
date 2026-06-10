@@ -41,9 +41,26 @@
   }
 
   function extractProductData() {
-    const title = (document.querySelector('input[placeholder*="商品名稱"], .product-title') || {}).value || document.title;
-    const specs = Array.from(document.querySelectorAll('.spec-item, [data-testid*="spec"]')).map(el => el.textContent).join(' | ');
-    return { title, category: 'Shopee商品', specs, price: '詢問賣場' };
+    // Minimal page type detection for status
+    const isEditPage = !!document.querySelector('.product-edit, [data-testid="product-description"], textarea[placeholder*="描述"]');
+    const pageType = isEditPage ? 'shopee-seller-edit' : (location.hostname.includes('shopee') ? 'shopee-product' : 'unsupported');
+    
+    const titleEl = document.querySelector('input[placeholder*="商品名稱"], .product-title, h1, [data-testid*="product-name"]');
+    const title = (titleEl && (titleEl.value || titleEl.textContent)) || document.title;
+
+    const priceEl = document.querySelector('.product-price, [data-testid*="price"], .price');
+    const price = (priceEl && priceEl.textContent) || '';
+
+    const specs = Array.from(document.querySelectorAll('.spec-item, [data-testid*="spec"], .product-detail, .attribute')).map(el => el.textContent.trim()).filter(Boolean).join(' | ').substring(0, 500);
+
+    return { 
+      title: title.trim(), 
+      category: 'Shopee商品', 
+      specs: specs || '請在賣家後台編輯頁查看更多規格', 
+      price: price.trim() || '詢問賣場',
+      images_desc: '商品圖片',
+      pageType: pageType
+    };
   }
 
   function extractProductList() {
@@ -55,8 +72,8 @@
     }));
   }
 
-  // Auto-fill when receiving from background
-  chrome.runtime.onMessage.addListener((msg) => {
+  // Message handler for side panel / popup / background
+  chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.action === 'fillDescription' && msg.description) {
       const ta = document.querySelector('textarea, [contenteditable="true"]');
       if (ta) {
@@ -64,9 +81,15 @@
         else ta.textContent = msg.description;
         ta.dispatchEvent(new Event('input', { bubbles: true }));
       }
-      // Also copy
       navigator.clipboard?.writeText(msg.description).catch(() => {});
+      sendResponse({ success: true });
     }
+
+    if (msg.action === 'getProductData') {
+      const data = extractProductData();
+      sendResponse(data);
+    }
+
     if (msg.action === 'generateAltForImages') {
       document.querySelectorAll('img').forEach((img, idx) => {
         if (!img.alt || img.alt.length < 5) {
@@ -76,6 +99,8 @@
         }
       });
     }
+
+    return true; // keep channel open for async sendResponse
   });
 
   // Right-click context menu integration is handled in background (feature 17)

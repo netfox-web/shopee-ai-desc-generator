@@ -9,16 +9,32 @@
   <h2>🤖 Shopee AI Side Panel v2.4</h2>
   <p>完整版儀表板 + 所有功能入口。支援即時監控與批量。</p>
   
+  <div id="status-area" style="background:#f0f0f0; padding:8px; margin-bottom:8px; font-size:12px; border-radius:4px;">
+    <div><strong>頁面類型:</strong> <span id="status-page-type">未知 (請重新整理蝦皮賣家頁面)</span></div>
+    <div><strong>商品資料:</strong> <span id="status-product-data">未抓取</span></div>
+    <div><strong>模式:</strong> <span id="status-mode">Mock (未接真實 AI)</span></div>
+    <div><strong>任務狀態:</strong> <span id="status-task">閒置</span></div>
+    <div><strong>最近結果:</strong> <span id="status-last-result">無</span></div>
+    <div><strong>錯誤:</strong> <span id="status-error" style="color:red;">無</span></div>
+  </div>
+  
   <div class="dash">
     <strong>快速操作</strong><br>
-    <button onclick="chrome.runtime.sendMessage({action:'startPriceMonitor'})">啟動價格監控</button>
-    <button onclick="chrome.runtime.sendMessage({action:'getAnalytics'}, r => alert(JSON.stringify(r)))">載入分析</button>
+    <button id="btn-monitor">啟動價格監控</button>
+    <button id="btn-analytics">載入分析</button>
   </div>
 
   <div id="monitor-status">監控狀態: 未啟動</div>
   
   <h4>所有30功能 (點擊使用)</h4>
   <div id="all-features"></div>
+
+  <div id="result-section" style="margin-top:12px; border-top:1px solid #ccc; padding-top:8px; display:none;">
+    <strong>生成結果 / 操作回應：</strong><br>
+    <textarea id="result-text" style="width:100%; height:120px; font-size:12px; margin-top:4px;" readonly></textarea><br>
+    <button id="copy-result" style="margin-top:4px;">複製結果</button>
+    <button id="try-fill" style="margin-top:4px;">嘗試填入當前頁面</button>
+  </div>
 
   <script src="sidepanel.js"></script>
 </body>
