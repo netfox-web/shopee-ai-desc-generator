@@ -2,9 +2,11 @@
 
 Chrome Extension 為蝦皮賣家打造的最強 AI 工具，目標實作完整 30 個實用功能。
 
-## 專案狀態 (v2.4 - 全部30功能一次完成 ✅)
+## 專案狀態 (v2.5.0 - Release Packaging + 完整 Phase 1-8 ✅)
+- **目前版本**: 2.5.0 (manifest.json 可控)
 - **已完整實作所有 30 個功能**：內容生成、價格/競品監控、批量/搬家/右鍵/圖片自動化、銷售與客訴分析、客服與訂單自動化、Prompt自訂/團隊/Pro/多平台同步。
 - 真實 Claude + Gemini 呼叫、Side Panel、上下文選單、Pro 鎖定模擬、儀表板。
+- **Release 基礎設施**：CHANGELOG.md、RELEASE_CHECKLIST.md、自動打包腳本（scripts/pack-extension.ps1）
 - **完整規格**：詳見 [FEATURES.md](./FEATURES.md)
 
 ## 功能總覽
@@ -67,6 +69,42 @@ git push -u origin main
 - [ ] 重新載入擴充 + 關開 Side Panel 後功能仍正常
 
 驗收路徑: 開啟 Side Panel -> 點以上 12 個 -> 檢查結果區/狀態/下載/填入。使用 mock 模式。
+
+## Release & Packaging (Phase 9)
+
+### 目前版本
+- manifest.json 中的 "version" 欄位為主要版本來源。
+- 每次 release 時更新版本號（語意化）。
+- README 頂部會顯示目前版本與更新日期。
+
+### 打包指令
+在 PowerShell 中執行：
+
+```powershell
+powershell -File scripts/pack-extension.ps1
+```
+
+輸出：
+- `dist/shopee-ai-desc-generator-vX.Y.Z.zip`
+- 會自動排除：.git、node_modules、scripts/fixtures、local secrets、暫存檔、dist 本身等。
+- 壓縮後的 zip 可直接用於「載入未封裝項目」測試（解壓後指向資料夾）。
+
+### 驗收
+- 打包後 zip 內不應包含敏感資料。
+- 在 chrome://extensions 開發者模式下載入來源資料夾或解壓後的資料夾。
+- 確認 side panel、options page、popup 正常開啟。
+- 無 manifest 錯誤（icons、matches 等）。
+- 完整檢查清單見 [RELEASE_CHECKLIST.md](./RELEASE_CHECKLIST.md)
+
+### 發佈流程摘要
+1. 完成所有測試與驗收項目
+2. 更新 manifest version
+3. 更新 CHANGELOG.md
+4. 執行打包指令
+5. 檢查 zip 內容與大小
+6. 更新 README 版本資訊
+7. 提交 commit（包含版本與打包相關變更）
+8. **不要直接 merge main / 不要 deploy**（除非 owner 明確指示）
 
 ## 測試與 Smoke Test (Phase 8)
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Shopee AI 描述生成器 (30功能版)",
-  "version": "2.4.0",
+  "version": "2.5.0",
   "description": "為 Shopee 賣家提供 30 種 AI 智能描述生成功能，支援批量、監控、搬家、多語言、SEO、利潤分析、Pro 功能等。完整實現所有 Phase。",
   "permissions": [
     "storage",
