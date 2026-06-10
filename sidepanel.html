@@ -9,16 +9,55 @@
   <h2>🤖 Shopee AI Side Panel v2.4</h2>
   <p>完整版儀表板 + 所有功能入口。支援即時監控與批量。</p>
   
+  <div id="status-area" style="background:#f0f0f0; padding:8px; margin-bottom:8px; font-size:12px; border-radius:4px;">
+    <div><strong>頁面類型:</strong> <span id="status-page-type">未知 (請重新整理蝦皮賣家頁面)</span></div>
+    <div><strong>商品資料:</strong> <span id="status-product-data">未抓取</span></div>
+    <div><strong>商品名稱:</strong> <span id="status-product-name">-</span></div>
+    <div><strong>價格:</strong> <span id="status-product-price">-</span></div>
+    <div><strong>已售:</strong> <span id="status-product-sold">-</span></div>
+    <div><strong>AI 模式:</strong> <span id="status-mode">Mock (未接真實 AI)</span> <button id="btn-refresh-status" style="font-size:10px;padding:1px 4px;margin-left:4px">刷新資料</button></div>
+    <div><strong>任務狀態:</strong> <span id="status-task">閒置</span></div>
+    <div><strong>最近結果:</strong> <span id="status-last-result">無</span></div>
+    <div><strong>錯誤:</strong> <span id="status-error" style="color:red;">無</span></div>
+  </div>
+
+  <!-- #7 Gateway quick config + #6 history (minimal inline for sidepanel) -->
+  <div class="dash" id="gateway-dash" style="display:none">
+    <strong>Gateway 設定 (安全模式，僅使用 issued key)</strong><br>
+    <input id="gw-url" placeholder="https://your-gateway.example.com/api/generate" style="width:98%;font-size:11px">
+    <input id="gw-key" placeholder="gw_issued_xxxxxxxx (絕對不要放 raw provider key)" style="width:98%;font-size:11px">
+    <button id="gw-save" style="font-size:11px">儲存</button>
+    <button id="gw-test" style="font-size:11px">測試連線</button>
+    <button id="gw-clear" style="font-size:11px">清除</button>
+    <span id="gw-status" style="font-size:11px;margin-left:6px"></span>
+  </div>
+
   <div class="dash">
     <strong>快速操作</strong><br>
-    <button onclick="chrome.runtime.sendMessage({action:'startPriceMonitor'})">啟動價格監控</button>
-    <button onclick="chrome.runtime.sendMessage({action:'getAnalytics'}, r => alert(JSON.stringify(r)))">載入分析</button>
+    <button id="btn-monitor">啟動價格監控</button>
+    <button id="btn-analytics">載入分析</button>
+    <button id="btn-history">查看最近結果 (10)</button>
+    <button id="btn-clear-result">清空結果</button>
   </div>
 
   <div id="monitor-status">監控狀態: 未啟動</div>
   
-  <h4>所有30功能 (點擊使用)</h4>
+  <h4>所有30功能 (點擊使用；分類可折疊)</h4>
   <div id="all-features"></div>
+
+  <div id="result-section" style="margin-top:12px; border-top:1px solid #ccc; padding-top:8px; display:none;">
+    <div id="result-meta" style="font-size:11px;color:#555;margin-bottom:4px"></div>
+    <strong>生成結果 / 操作回應：</strong><br>
+    <textarea id="result-text" style="width:100%; height:120px; font-size:12px; margin-top:4px;" readonly></textarea><br>
+    <button id="copy-result" style="margin-top:4px;">複製結果</button>
+    <button id="try-fill" style="margin-top:4px;">嘗試填入當前頁面</button>
+    <button id="btn-retry" style="margin-top:4px;">重新生成</button>
+  </div>
+
+  <div id="history-panel" style="margin-top:8px; display:none; font-size:11px">
+    <strong>最近結果歷史：</strong> <select id="history-select" style="max-width:220px"></select>
+    <button id="history-load" style="font-size:10px">載入</button>
+  </div>
 
   <script src="sidepanel.js"></script>
 </body>
