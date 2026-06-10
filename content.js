@@ -10,7 +10,8 @@
       injectMainButton(editArea);
     }
     // Support product list pages for bulk (feature 13)
-    if (document.querySelector('.product-list, .shopee-product-list') && !document.getElementById('shopee-ai-bulk-btn')) {
+    const isList = document.querySelector('.product-list, .shopee-product-list') || location.href.includes('/portal/product/list');
+    if (isList && !document.getElementById('shopee-ai-bulk-btn')) {
       injectBulkButton();
     }
   });
@@ -35,7 +36,20 @@
     btn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;padding:8px 14px;background:#28a745;color:white;border:none;border-radius:6px;';
     btn.onclick = () => {
       const products = extractProductList();
-      chrome.runtime.sendMessage({ action: 'batchGenerate', products, featureId: 13 });
+      chrome.runtime.sendMessage({ action: 'batchGenerate', products, featureId: 13 }, (response) => {
+        if (response && response.results && response.results.length) {
+          const csv = 'id,title,description\n' + response.results.map(r => `${r.id || ''},"${(r.title||'').replace(/"/g,'""')}","${(r.description||'').replace(/"/g,'""')}"`).join('\n');
+          const blob = new Blob([csv], {type: 'text/csv'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'batch-descriptions.csv';
+          a.click();
+          alert('批量生成完成，已下載 CSV。結果數: ' + response.results.length);
+        } else {
+          alert('批量生成失敗或無結果');
+        }
+      });
     };
     document.body.appendChild(btn);
   }
@@ -64,12 +78,8 @@
   }
 
   function extractProductList() {
-    // Simple extraction from list pages
-    return Array.from(document.querySelectorAll('.product-item, .shopee-product')).slice(0, 10).map((el, i) => ({
-      id: 'list-' + i,
-      title: el.querySelector('.title, .product-name')?.textContent?.trim() || '商品' + i,
-      specs: ''
-    }));
+    const data = extractProductData();
+    return data.products || [];
   }
 
   // Message handler for side panel / popup / background

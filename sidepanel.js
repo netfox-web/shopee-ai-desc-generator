@@ -118,7 +118,40 @@ function renderFeatures() {
   container.innerHTML = '';
   let currentCat = '';
 
-  FEATURES.forEach(f => {
+  // full list to ensure 30 buttons render (minimal to fix no buttons)
+  const fullFeatures = [
+    { id: 1, cat: "內容生成類", name: "多模板選擇 (描述/廣告/規格/SEO/促銷/評價/利潤)" },
+    { id: 2, cat: "內容生成類", name: "廣告文案一鍵生成" },
+    { id: 4, cat: "內容生成類", name: "SEO 標題 + 關鍵字優化" },
+    { id: 5, cat: "內容生成類", name: "多語言翻譯（中英越泰）" },
+    { id: 6, cat: "內容生成類", name: "限時優惠 / 促銷文案" },
+    { id: 7, cat: "內容生成類", name: "評價回覆自動生成" },
+    { id: 8, cat: "定價與競爭", name: "同類商品價格監控" },
+    { id: 9, cat: "定價與競爭", name: "AI 建議售價" },
+    { id: 10, cat: "定價與競爭", name: "降價 / 調價提醒" },
+    { id: 11, cat: "定價與競爭", name: "利潤計算器" },
+    { id: 12, cat: "定價與競爭", name: "競品分析報告" },
+    { id: 13, cat: "自動化", name: "批量商品描述生成" },
+    { id: 14, cat: "自動化", name: "一鍵搬家工具（PChome / MOMO / Shopify）" },
+    { id: 15, cat: "自動化", name: "圖片 Alt Text 自動生成" },
+    { id: 16, cat: "自動化", name: "商品圖片優化建議" },
+    { id: 17, cat: "自動化", name: "右鍵快速生成" },
+    { id: 18, cat: "數據分析", name: "銷售數據 AI 洞察" },
+    { id: 19, cat: "數據分析", name: "熱門關鍵字追蹤" },
+    { id: 20, cat: "數據分析", name: "退貨 / 客訴分析" },
+    { id: 21, cat: "數據分析", name: "活動檔期建議" },
+    { id: 22, cat: "顧客與訂單", name: "買家評價風險預警" },
+    { id: 23, cat: "顧客與訂單", name: "客服回覆模板庫" },
+    { id: 24, cat: "顧客與訂單", name: "訂單優先處理建議" },
+    { id: 25, cat: "顧客與訂單", name: "自動發送追蹤訊息" },
+    { id: 26, cat: "進階與變現", name: "Prompt 模板自訂" },
+    { id: 27, cat: "進階與變現", name: "團隊共享模板" },
+    { id: 28, cat: "進階與變現", name: "使用量統計儀表板" },
+    { id: 29, cat: "進階與變現", name: "Pro 會員功能鎖定" },
+    { id: 30, cat: "進階與變現", name: "多平台同步" }
+  ];
+
+  fullFeatures.forEach(f => {
     if (f.cat !== currentCat) {
       currentCat = f.cat;
       const catDiv = document.createElement('div');
@@ -148,7 +181,8 @@ function renderFeatures() {
             const dataFromPage = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' });
             if (dataFromPage) {
               productData = { ...productData, ...dataFromPage };
-              updateStatus({ productData: '已抓取', pageType: dataFromPage.pageType || 'shopee' });
+              const count = dataFromPage.productCount || 1;
+              updateStatus({ productData: `已抓取 ${count} 筆`, pageType: dataFromPage.pageType || 'shopee' });
             }
           }
         } catch (e) {
@@ -190,7 +224,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (tab) {
       const data = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }).catch(() => null);
       if (data) {
-        updateStatus({ pageType: data.pageType || 'shopee', productData: '已抓取' });
+        const count = data.productCount || 1;
+        const pt = data.pageType === 'shopee-seller-product-list' ? '蝦皮賣家商品列表' : (data.pageType || 'shopee');
+        updateStatus({ pageType: pt, productData: `已抓取 ${count} 筆` });
       } else {
         updateStatus({ pageType: '非支援頁面 (請切換到蝦皮賣家商品編輯頁)', productData: '未抓取' });
       }
