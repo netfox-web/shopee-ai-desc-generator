@@ -22,8 +22,17 @@
     <option value="claude">優先 Claude</option>
     <option value="gemini">優先 Gemini</option>
   </select>
-  
+
+  <!-- #7 安全 Gateway 設定（僅存放 issued key，絕不存放 raw provider key） -->
+  <h3>安全 AI Gateway（推薦用於生產）</h3>
+  <label>Gateway URL（你的後端 proxy endpoint）</label>
+  <input type="text" id="gw-url" placeholder="https://your-mw-or-gateway.example.com/api/ai-generate">
+  <label>Issued Gateway Key（只放 gw_ 開頭的發行金鑰）</label>
+  <input type="password" id="gw-key" placeholder="gw_issued_... （絕對不要輸入 Claude/Gemini raw key）">
+  <small style="color:#c00">注意：前端永不保存原始 provider key。Gateway 由你自己的後端負責呼叫真實 AI 並回傳結果。</small>
+
   <button id="save" style="margin-top:12px;padding:8px 16px">儲存所有設定</button>
+  <button id="gw-test" style="margin-top:12px;padding:8px 16px">測試 Gateway</button>
   <div id="status" style="margin-top:8px;color:green"></div>
   
   <script src="options.js"></script>
