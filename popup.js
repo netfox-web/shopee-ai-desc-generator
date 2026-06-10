@@ -1,60 +1,99 @@
-// popup.js - UI for selecting from 30 AI features
+// popup.js - 30功能選擇器 (根據完整規格)
 
 const FEATURES = [
-  { id: 0, name: "基礎 AI 描述生成", desc: "根據商品資訊自動產生自然描述" },
-  { id: 1, name: "SEO 關鍵字優化", desc: "自動嵌入熱門搜尋關鍵字" },
-  { id: 2, name: "情感訴求版", desc: "強調買家情感與生活場景" },
-  { id: 3, name: "規格強調版", desc: "重點突出材質、尺寸、功能規格" },
-  { id: 4, name: "短版精華 (50字內)", desc: "適合標題或簡介的濃縮版" },
-  { id: 5, name: "詳細故事版", desc: "用故事敘述商品背景與優勢" },
-  { id: 6, name: "買家痛點解決", desc: "針對常見問題提供解決方案" },
-  { id: 7, name: "多語言翻譯", desc: "一鍵轉換英文/日文/泰文等" },
-  { id: 8, name: "A/B 測試變體", desc: "產生 2-3 個不同風格版本供比較" },
-  { id: 9, name: "促銷/限時活動版", desc: "結合折扣、贈品、限時語氣" },
-  // ... 繼續到 30 個 (開發時可擴充)
-  { id: 10, name: "環保/永續訴求", desc: "強調綠色材料與永續理念" },
-  { id: 11, name: "專業/技術向", desc: "適合 3C、家電等專業商品" },
-  { id: 12, name: "生活風格版", desc: "融入生活情境與使用想像" },
-  { id: 13, name: "比較優勢版", desc: "與競品比較突出差異" },
-  { id: 14, name: "用戶評價引用", desc: "模擬真實買家好評語句" },
-  { id: 15, name: "Q&A 格式", desc: "以問答形式呈現商品亮點" },
-  { id: 16, name: "兒童/親子向", desc: "適合母嬰、玩具類商品" },
-  { id: 17, name: "時尚潮流版", desc: "強調設計感與流行趨勢" },
-  { id: 18, name: "健康/機能版", desc: "突出健康、舒適、機能性" },
-  { id: 19, name: "預算/性價比版", desc: "強調划算、值得購買" },
-  { id: 20, name: "季節限定版", desc: "配合節慶或季節活動" },
-  { id: 21, name: "新手入門版", desc: "適合初次使用者，簡單易懂" },
-  { id: 22, name: "進階專業版", desc: "針對有經驗用戶的詳細說明" },
-  { id: 23, name: "社群分享版", desc: "適合 IG、FB 貼文風格" },
-  { id: 24, name: "影片腳本版", desc: "產生短影片或直播腳本" },
-  { id: 25, name: "包裝/禮盒版", desc: "適合送禮或精美包裝描述" },
-  { id: 26, name: "客製化/個人化", desc: "強調可客製選項" },
-  { id: 27, name: "保固/售後版", desc: "突出售後服務與保固" },
-  { id: 28, name: "組合/套裝版", desc: "適合組合商品或加購優惠" },
-  { id: 29, name: "終極完整版", desc: "綜合所有優勢的最完整描述" }
+  // 內容生成類 (已實作部分)
+  { id: 1, cat: "內容生成類", name: "多模板選擇 (描述/廣告/規格/SEO/促銷/評價/利潤)", status: "done" },
+  { id: 2, cat: "內容生成類", name: "廣告文案一鍵生成", status: "todo" },
+  { id: 4, cat: "內容生成類", name: "SEO 標題 + 關鍵字優化", status: "done" },
+  { id: 5, cat: "內容生成類", name: "多語言翻譯（中英越泰）", status: "todo" },
+  { id: 6, cat: "內容生成類", name: "限時優惠 / 促銷文案", status: "todo" },
+  { id: 7, cat: "內容生成類", name: "評價回覆自動生成", status: "todo" },
+
+  // 定價與競爭
+  { id: 8, cat: "定價與競爭", name: "同類商品價格監控", status: "todo" },
+  { id: 9, cat: "定價與競爭", name: "AI 建議售價", status: "todo" },
+  { id: 10, cat: "定價與競爭", name: "降價 / 調價提醒", status: "todo" },
+  { id: 11, cat: "定價與競爭", name: "利潤計算器", status: "done" },
+  { id: 12, cat: "定價與競爭", name: "競品分析報告", status: "todo" },
+
+  // 自動化
+  { id: 13, cat: "自動化", name: "批量商品描述生成", status: "todo" },
+  { id: 14, cat: "自動化", name: "一鍵搬家工具（PChome / MOMO / Shopify）", status: "todo" },
+  { id: 15, cat: "自動化", name: "圖片 Alt Text 自動生成", status: "todo" },
+  { id: 16, cat: "自動化", name: "商品圖片優化建議", status: "todo" },
+  { id: 17, cat: "自動化", name: "右鍵快速生成", status: "todo" },
+
+  // 數據分析
+  { id: 18, cat: "數據分析", name: "銷售數據 AI 洞察", status: "todo" },
+  { id: 19, cat: "數據分析", name: "熱門關鍵字追蹤", status: "todo" },
+  { id: 20, cat: "數據分析", name: "退貨 / 客訴分析", status: "todo" },
+  { id: 21, cat: "數據分析", name: "活動檔期建議", status: "todo" },
+
+  // 顧客與訂單
+  { id: 22, cat: "顧客與訂單", name: "買家評價風險預警", status: "todo" },
+  { id: 23, cat: "顧客與訂單", name: "客服回覆模板庫", status: "todo" },
+  { id: 24, cat: "顧客與訂單", name: "訂單優先處理建議", status: "todo" },
+  { id: 25, cat: "顧客與訂單", name: "自動發送追蹤訊息", status: "todo" },
+
+  // 進階與變現
+  { id: 26, cat: "進階與變現", name: "Prompt 模板自訂", status: "todo" },
+  { id: 27, cat: "進階與變現", name: "團隊共享模板", status: "todo" },
+  { id: 28, cat: "進階與變現", name: "使用量統計儀表板", status: "todo" },
+  { id: 29, cat: "進階與變現", name: "Pro 會員功能鎖定", status: "todo" },
+  { id: 30, cat: "進階與變現", name: "多平台同步", status: "todo" }
 ];
 
 function renderFeatures() {
   const container = document.getElementById('features');
+  let currentCat = '';
+
   FEATURES.forEach(f => {
+    if (f.cat !== currentCat) {
+      currentCat = f.cat;
+      const catDiv = document.createElement('div');
+      catDiv.className = 'category';
+      catDiv.textContent = currentCat;
+      container.appendChild(catDiv);
+    }
+
     const div = document.createElement('div');
     div.className = 'feature';
-    div.innerHTML = `<strong>${f.name}</strong><br><small>${f.desc}</small>`;
-    div.onclick = () => {
-      chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
-        chrome.tabs.sendMessage(tabs[0].id, {
-          action: 'generateDescription',
-          featureId: f.id
-        });
-        window.close();
-      });
-    };
+    
+    const statusClass = f.status === 'done' ? 'done' : 'todo';
+    const statusText = f.status === 'done' ? '✓ 已實作' : '待開發';
+
+    div.innerHTML = `
+      <label style="flex:1; display:flex; align-items:center; gap:6px;">
+        <input type="radio" name="feature" value="${f.id}">
+        <span>${f.name}</span>
+      </label>
+      <span class="status ${statusClass}">${statusText}</span>
+    `;
     container.appendChild(div);
   });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   renderFeatures();
+
+  document.getElementById('generate').onclick = () => {
+    const selected = document.querySelector('input[name="feature"]:checked');
+    if (!selected) {
+      alert('請選擇一個功能');
+      return;
+    }
+    
+    chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+      if (tabs[0]) {
+        chrome.tabs.sendMessage(tabs[0].id, {
+          action: 'generateDescription',
+          featureId: parseInt(selected.value)
+        });
+      }
+      window.close();
+    });
+  };
+
   document.getElementById('open-options').onclick = () => {
     chrome.runtime.openOptionsPage();
   };

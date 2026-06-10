@@ -2,20 +2,30 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Shopee AI 描述生成器 - 30功能</title>
+  <title>Shopee AI 描述生成器 (30功能版)</title>
   <style>
-    body { width: 380px; padding: 12px; font-family: system-ui, sans-serif; }
-    h1 { font-size: 16px; margin: 0 0 12px; color: #ee4d2d; }
-    .feature { padding: 6px; border-bottom: 1px solid #eee; cursor: pointer; }
-    .feature:hover { background: #f8f8f8; }
-    button { width: 100%; padding: 10px; background: #ee4d2d; color: white; border: none; border-radius: 4px; margin-top: 10px; cursor: pointer; }
+    body { width: 420px; padding: 10px; font-family: system-ui, sans-serif; font-size: 13px; }
+    h1 { font-size: 15px; margin: 0 0 8px; color: #ee4d2d; }
+    .category { font-weight: 600; margin: 10px 0 4px; color: #333; border-bottom: 1px solid #eee; padding-bottom: 2px; }
+    .feature { padding: 4px 6px; display: flex; align-items: center; gap: 6px; }
+    .feature:hover { background: #f5f5f5; }
+    .feature input { margin-right: 6px; }
+    .status { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-left: auto; }
+    .done { background: #d4edda; color: #155724; }
+    .todo { background: #fff3cd; color: #856404; }
+    button { width: 100%; padding: 8px; background: #ee4d2d; color: white; border: none; border-radius: 4px; margin-top: 8px; cursor: pointer; font-weight: 600; }
+    .small { font-size: 11px; color: #666; }
   </style>
 </head>
 <body>
-  <h1>🤖 Shopee AI 描述生成器 (30功能版)</h1>
-  <p>點擊功能快速生成產品描述</p>
+  <h1>🤖 Shopee AI 描述生成器 <span style="font-size:11px">(v2.3 - 30功能)</span></h1>
+  <p class="small">選擇功能後點擊生成（已實作項目會標記）</p>
+  
   <div id="features"></div>
-  <button id="open-options">開啟進階設定</button>
+  
+  <button id="generate">生成描述</button>
+  <button id="open-options" style="background:#555">開啟設定 (API Key)</button>
+  
   <script src="popup.js"></script>
 </body>
 </html>
