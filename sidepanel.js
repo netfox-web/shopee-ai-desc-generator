@@ -17,10 +17,12 @@ const FEATURE_REGISTRY = {
   // ... other 15-30 can use generateWithPrompt or specific
 };
 
-function generateWithPrompt(fid, pd) {
+function generateWithPrompt(fid, pd, template) {
   // Use background for consistency, but post-process for MVP "real" feel
   return new Promise(resolve => {
-    chrome.runtime.sendMessage({ action: 'generateDescription', productData: pd, featureId: fid }, (res) => {
+    const msg = { action: 'generateDescription', productData: pd, featureId: fid };
+    if (template) msg.template = template;
+    chrome.runtime.sendMessage(msg, (res) => {
       resolve(res && res.description ? res.description : 'Mock: ' + (pd.title || '商品') );
     });
   });
@@ -137,6 +139,163 @@ function loadEntitlement() {
 
 function isProAllowed() {
   return ['pro-trial', 'pro-active', 'admin'].includes(currentEntitlement);
+}
+
+// Phase 12 Template Library
+let currentTemplates = [];
+
+const DEFAULT_TEMPLATES = [
+  { templateId: 'def-1', name: '標準商品描述', category: '商品描述', featureId: 1, language: '繁中', tone: '專業', promptBody: '你是 Shopee 頂級文案專家。根據以下商品資訊，生成吸引人的產品描述，強調賣點、情感連結和購買 urgency。使用繁體中文，約150-250字。商品資訊: {title} {category} {specs} {price}', outputFormat: '純文字 150-250字', variables: ['title','category','specs','price'], isDefault: true, isPro: false, updatedAt: Date.now() },
+  { templateId: 'def-2', name: '強力廣告文案', category: '廣告文案', featureId: 2, language: '繁中', tone: '激勵', promptBody: '生成一段強力廣告文案，用於 Shopee 首頁或 FB 廣告。強調獨特賣點、限時優惠、社會證明。激勵立即購買。繁體中文，100-180字。商品: {title} {category} {specs}', outputFormat: '純文字 100-180字', variables: ['title','category','specs'], isDefault: true, isPro: false, updatedAt: Date.now() },
+  { templateId: 'def-4', name: 'SEO 標題優化', category: 'SEO 標題', featureId: 4, language: '繁中', tone: '搜尋友好', promptBody: '優化 SEO 標題和描述。提供 5 個不同長度的 SEO 標題 (主標題 + 副標題)，融入高搜尋量關鍵字。然後生成 200字 SEO 優化描述。目標關鍵字: {keywords} 商品: {title} {category}', outputFormat: '標題列表 + 描述', variables: ['title','category','keywords'], isDefault: true, isPro: false, updatedAt: Date.now() },
+  { templateId: 'def-6', name: '限時促銷文案', category: '促銷文案', featureId: 6, language: '繁中', tone: ' urgency', promptBody: '為限時促銷活動撰寫文案。強調折扣百分比、贈品、倒數計時 urgency。適合 Shopee 活動頁。繁體中文，120-200字。商品: {title} {original_price} {discount} {end_date}', outputFormat: '純文字 120-200字', variables: ['title','original_price','discount','end_date'], isDefault: true, isPro: false, updatedAt: Date.now() },
+  { templateId: 'def-7', name: '評價回覆模板', category: '評價回覆', featureId: 7, language: '繁中', tone: '親切', promptBody: '根據買家評價，自動生成 5 種不同風格的賣家回覆 (感謝、解決問題、邀請再購)。使用繁體中文，自然親切。評價: {review_text} 商品: {title}', outputFormat: '5 種回覆', variables: ['title','review_text'], isDefault: true, isPro: false, updatedAt: Date.now() },
+  { templateId: 'def-5', name: '多語言翻譯', category: '多語翻譯', featureId: 5, language: '多語', tone: '自然', promptBody: '將以下商品描述翻譯成英文、越南文、泰文。保持自然銷售語氣和文化適應。原文: {description} 商品: {title}', outputFormat: '多語對照', variables: ['title','description'], isDefault: true, isPro: false, updatedAt: Date.now() },
+  { templateId: 'def-12', name: '競品分析', category: '競品分析', featureId: 12, language: '繁中', tone: '分析', promptBody: '生成競品分析報告。比較我的商品與 3 個主要競品在價格、規格、評價、賣點上的差異。提供優勢/劣勢和改進建議。商品: {title} {specs} 競品: {competitors_data}', outputFormat: '報告格式', variables: ['title','specs','competitors_data'], isDefault: true, isPro: false, updatedAt: Date.now() },
+  { templateId: 'def-14', name: '搬家 CSV 轉換', category: '搬家 CSV', featureId: 14, language: '繁中', tone: '結構化', promptBody: '一鍵搬家工具。將 PChome/MOMO/Shopey 商品資料轉換為 Shopee 格式描述 + 標題 + 規格。來源平台: {source_platform} 原始資料: {raw_data}', outputFormat: '結構化文字', variables: ['source_platform','raw_data'], isDefault: true, isPro: false, updatedAt: Date.now() }
+];
+
+async function loadTemplates() {
+  const data = await new Promise(r => chrome.storage.local.get(['customTemplates'], d => r(d || {})));
+  let tpls = data.customTemplates || [];
+  if (tpls.length === 0) {
+    tpls = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES)); // deep copy
+    await saveTemplates(tpls);
+  }
+  currentTemplates = tpls;
+  return tpls;
+}
+
+async function saveTemplates(tpls) {
+  await new Promise(r => chrome.storage.local.set({customTemplates: tpls}, r));
+  currentTemplates = tpls;
+}
+
+function renderTemplateSelect() {
+  const sel = document.getElementById('template-select');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">-- 使用預設 Prompt --</option>';
+  currentTemplates.forEach(t => {
+    const opt = document.createElement('option');
+    opt.value = t.templateId;
+    opt.textContent = `${t.name} (F${t.featureId})`;
+    sel.appendChild(opt);
+  });
+}
+
+function getSelectedTemplate() {
+  const sel = document.getElementById('template-select');
+  if (!sel || !sel.value) return null;
+  return currentTemplates.find(t => t.templateId === sel.value) || null;
+}
+
+async function addNewTemplate() {
+  const name = prompt('模板名稱:');
+  if (!name) return;
+  const category = prompt('分類 (e.g. 商品描述):', '自訂');
+  const fidStr = prompt('對應 featureId (數字):', '1');
+  const featureId = parseInt(fidStr) || 1;
+  const promptBody = prompt('Prompt 本文 (可用 {title} {price} 等變數):', '根據商品 {title} 產生描述...');
+  if (!promptBody) return;
+  const newT = {
+    templateId: 'tpl-' + Date.now(),
+    name, category, featureId,
+    language: '繁中', tone: '自訂',
+    promptBody,
+    outputFormat: '文字',
+    variables: ['title'],
+    isDefault: false,
+    isPro: false,
+    updatedAt: Date.now()
+  };
+  currentTemplates.push(newT);
+  await saveTemplates(currentTemplates);
+  renderTemplateSelect();
+  alert('新增成功');
+}
+
+async function editTemplate() {
+  const t = getSelectedTemplate();
+  if (!t || t.isDefault) { alert('請選擇自訂模板或不可編輯預設'); return; }
+  const newName = prompt('新名稱:', t.name);
+  if (newName) t.name = newName;
+  const newBody = prompt('新 PromptBody:', t.promptBody);
+  if (newBody) t.promptBody = newBody;
+  t.updatedAt = Date.now();
+  await saveTemplates(currentTemplates);
+  renderTemplateSelect();
+  alert('編輯成功');
+}
+
+async function deleteTemplate() {
+  const t = getSelectedTemplate();
+  if (!t || t.isDefault) { alert('請選擇自訂模板'); return; }
+  if (!confirm('刪除 ' + t.name + '?')) return;
+  currentTemplates = currentTemplates.filter(x => x.templateId !== t.templateId);
+  await saveTemplates(currentTemplates);
+  renderTemplateSelect();
+  alert('已刪除');
+}
+
+async function importTemplates() {
+  const jsonStr = prompt('貼上 templates.json 內容:');
+  if (!jsonStr) return;
+  try {
+    const imported = JSON.parse(jsonStr);
+    if (!Array.isArray(imported)) throw new Error('必須是陣列');
+    for (const t of imported) {
+      if (!t.templateId || !t.name || !t.promptBody) throw new Error('缺少必要欄位 templateId/name/promptBody');
+      if (t.promptBody.includes('sk-ant-') || t.promptBody.includes('AIza')) throw new Error('不可包含 raw provider key');
+    }
+    // merge, avoid duplicate id
+    const existingIds = new Set(currentTemplates.map(x=>x.templateId));
+    const toAdd = imported.filter(x => !existingIds.has(x.templateId));
+    currentTemplates.push(...toAdd);
+    await saveTemplates(currentTemplates);
+    renderTemplateSelect();
+    alert('匯入成功，新增 ' + toAdd.length + ' 個');
+  } catch(e) {
+    alert('匯入失敗: ' + e.message);
+  }
+}
+
+async function exportTemplates() {
+  const dataStr = JSON.stringify(currentTemplates, null, 2);
+  await navigator.clipboard.writeText(dataStr);
+  alert('已複製到剪貼簿 (templates.json 格式)。可手動存檔。');
+  // also trigger download
+  const blob = new Blob([dataStr], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'templates.json'; a.click();
+}
+
+async function resetTemplates() {
+  if (!confirm('還原所有預設模板？自訂將清除。')) return;
+  currentTemplates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
+  await saveTemplates(currentTemplates);
+  renderTemplateSelect();
+  alert('已還原預設');
+}
+
+async function initTemplates() {
+  await loadTemplates();
+  renderTemplateSelect();
+  // wire buttons
+  const sel = document.getElementById('template-select');
+  const btnNew = document.getElementById('btn-template-new');
+  const btnEdit = document.getElementById('btn-template-edit');
+  const btnDel = document.getElementById('btn-template-del');
+  const btnImp = document.getElementById('btn-template-import');
+  const btnExp = document.getElementById('btn-template-export');
+  const btnReset = document.getElementById('btn-template-reset');
+  if (btnNew) btnNew.onclick = addNewTemplate;
+  if (btnEdit) btnEdit.onclick = editTemplate;
+  if (btnDel) btnDel.onclick = deleteTemplate;
+  if (btnImp) btnImp.onclick = importTemplates;
+  if (btnExp) btnExp.onclick = exportTemplates;
+  if (btnReset) btnReset.onclick = resetTemplates;
+  if (sel) sel.onchange = () => console.log('[Template] selected', getSelectedTemplate());
 }
 function showResultWithMeta(text, meta) {
   const metaEl = document.getElementById('result-meta');
@@ -335,9 +494,11 @@ function renderFeatures() {
           } else if (f.id === 14) {
             resultText = await (reg && reg.handler ? reg.handler(productData) : '搬家完成');
           } else if (reg && reg.handler) {
-            resultText = await reg.handler(productData);
+            resultText = useTmpl ? await generateWithPrompt(f.id, productData, useTmpl) : await reg.handler(productData);
           } else {
-            const response = await chrome.runtime.sendMessage({ action: 'generateDescription', productData, featureId: f.id });
+            const msg = { action: 'generateDescription', productData, featureId: f.id };
+            if (useTmpl) msg.template = useTmpl;
+            const response = await chrome.runtime.sendMessage(msg);
             resultText = response && response.description ? response.description : 'Mock 生成';
           }
 
@@ -366,6 +527,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadHistory();
   loadEntitlement();
   renderFeatures();
+  initTemplates();
 
   // #6 refresh status button + #3 full page data
   const refreshBtn = document.getElementById('btn-refresh-status');

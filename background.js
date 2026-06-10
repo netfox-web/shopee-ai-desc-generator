@@ -63,9 +63,12 @@ async function callGemini(prompt, apiKey) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Gemini 回應失敗';
 }
 
-async function generateWithAI(productData, featureId, apiKeys) {
-  const template = FEATURE_PROMPTS[featureId] || FEATURE_PROMPTS[1];
-  const prompt = template.replace(/\{(\w+)\}/g, (match, key) => productData[key] || match);
+async function generateWithAI(productData, featureId, apiKeys, customTemplate) {
+  let templateStr = FEATURE_PROMPTS[featureId] || FEATURE_PROMPTS[1];
+  if (customTemplate && customTemplate.promptBody) {
+    templateStr = customTemplate.promptBody;
+  }
+  const prompt = templateStr.replace(/\{(\w+)\}/g, (match, key) => productData[key] || match);
 
   let description = '';
   const preferClaude = apiKeys.claudeKey && (!apiKeys.geminiKey || Math.random() > 0.5);
@@ -206,7 +209,7 @@ async function callGateway(productData, featureId, gateway) {
   }
 }
 
-async function generateWithGatewayOrMock(productData, featureId) {
+async function generateWithGatewayOrMock(productData, featureId, _apiKeys, customTemplate) {
   // Priority: Gateway (issued key) > direct keys (dev only) > mock
   // SECURITY: never log raw keys; gateway key is "issued" token only.
   return new Promise((resolve) => {
@@ -226,7 +229,7 @@ async function generateWithGatewayOrMock(productData, featureId) {
       chrome.storage.sync.get(['claudeKey', 'geminiKey'], async (keys) => {
         const apiKeys = { claudeKey: keys.claudeKey, geminiKey: keys.geminiKey };
         // NOTE: For production security, configure a Gateway (see options) instead of storing raw provider keys here.
-        const desc = await generateWithAI(productData, featureId, apiKeys); // re-use existing (may hit mock)
+        const desc = await generateWithAI(productData, featureId, apiKeys, customTemplate); // re-use existing (may hit mock)
         resolve(desc);
       });
     });
@@ -246,7 +249,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       }
       // #7 Use gateway-first path (secure, no raw keys in extension for prod)
       const startTime = Date.now();
-      const desc = await generateWithGatewayOrMock(request.productData, request.featureId);
+      const desc = await generateWithGatewayOrMock(request.productData, request.featureId, null, request.template);
       const endTime = Date.now();
       const durationMs = endTime - startTime;
 
@@ -277,7 +280,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.storage.sync.get(['claudeKey', 'geminiKey'], async (keys) => {
       const results = [];
       for (const prod of request.products || []) {
-        const desc = await generateWithGatewayOrMock(prod, request.featureId || 1);
+        const desc = await generateWithGatewayOrMock(prod, request.featureId || 1, null, request.template);
         results.push({ ...prod, description: desc, generatedDescription: desc });
       }
       sendResponse({ success: true, results });
@@ -340,7 +343,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'migrateFromPlatform') {
     // Feature 14 - gateway aware
     chrome.storage.sync.get(['claudeKey', 'geminiKey'], async () => {
-      const desc = await generateWithGatewayOrMock({ title: request.rawData && request.rawData.title || '' }, 14);
+      const desc = await generateWithGatewayOrMock({ title: request.rawData && request.rawData.title || '' }, 14, null, request.template);
       sendResponse({ success: true, migrated: desc });
     });
     return true;
