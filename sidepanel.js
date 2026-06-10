@@ -1,19 +1,19 @@
 // sidepanel.js - Advanced full dashboard for all 30 features (functional version)
 
 const FEATURE_REGISTRY = {
-  1: { id:1, cat:"內容生成類", name:"多模板選擇 (描述/廣告/規格/SEO/促銷/評價/利潤)", handler: (pd) => generateWithPrompt(1, pd), requiresEdit: false },
-  2: { id:2, cat:"內容生成類", name:"廣告文案一鍵生成", handler: (pd) => generateWithPrompt(2, pd), requiresEdit: false },
-  4: { id:4, cat:"內容生成類", name:"SEO 標題 + 關鍵字優化", handler: (pd) => generateWithPrompt(4, pd), requiresEdit: false },
-  5: { id:5, cat:"內容生成類", name:"多語言翻譯（中英越泰）", handler: (pd) => translateMock(pd), requiresEdit: false },
-  6: { id:6, cat:"內容生成類", name:"限時優惠 / 促銷文案", handler: (pd) => generateWithPrompt(6, pd), requiresEdit: false },
-  7: { id:7, cat:"內容生成類", name:"評價回覆自動生成", handler: (pd) => generateWithPrompt(7, pd), requiresEdit: false },
-  8: { id:8, cat:"定價與競爭", name:"同類商品價格監控", handler: (pd) => simulatePriceMonitor(pd), requiresEdit: true },
-  9: { id:9, cat:"定價與競爭", name:"AI 建議售價", handler: (pd) => simulatePriceSuggestion(pd), requiresEdit: false },
-  10: { id:10, cat:"定價與競爭", name:"降價 / 調價提醒", handler: (pd) => generateWithPrompt(10, pd), requiresEdit: true },
-  11: { id:11, cat:"定價與競爭", name:"利潤計算器", handler: (pd) => simulateProfitCalc(pd), requiresEdit: false },
-  12: { id:12, cat:"定價與競爭", name:"競品分析報告", handler: (pd) => simulateCompetitorReport(pd), requiresEdit: false },
-  13: { id:13, cat:"自動化", name:"批量商品描述生成", handler: (pd) => simulateBatch(pd), requiresEdit: true },
-  14: { id:14, cat:"自動化", name:"一鍵搬家工具（PChome / MOMO / Shopify）", handler: (pd) => simulateMigrateCSV(pd), requiresEdit: false },
+  1: { id:1, cat:"內容生成類", name:"多模板選擇 (描述/廣告/規格/SEO/促銷/評價/利潤)", handler: (pd) => generateWithPrompt(1, pd), requiresEdit: false, plan: 'free' },
+  2: { id:2, cat:"內容生成類", name:"廣告文案一鍵生成", handler: (pd) => generateWithPrompt(2, pd), requiresEdit: false, plan: 'free' },
+  4: { id:4, cat:"內容生成類", name:"SEO 標題 + 關鍵字優化", handler: (pd) => generateWithPrompt(4, pd), requiresEdit: false, plan: 'free' },
+  5: { id:5, cat:"內容生成類", name:"多語言翻譯（中英越泰）", handler: (pd) => translateMock(pd), requiresEdit: false, plan: 'free' },
+  6: { id:6, cat:"內容生成類", name:"限時優惠 / 促銷文案", handler: (pd) => generateWithPrompt(6, pd), requiresEdit: false, plan: 'free' },
+  7: { id:7, cat:"內容生成類", name:"評價回覆自動生成", handler: (pd) => generateWithPrompt(7, pd), requiresEdit: false, plan: 'free' },
+  8: { id:8, cat:"定價與競爭", name:"同類商品價格監控", handler: (pd) => simulatePriceMonitor(pd), requiresEdit: true, plan: 'free' },
+  9: { id:9, cat:"定價與競爭", name:"AI 建議售價", handler: (pd) => simulatePriceSuggestion(pd), requiresEdit: false, plan: 'free' },
+  10: { id:10, cat:"定價與競爭", name:"降價 / 調價提醒", handler: (pd) => generateWithPrompt(10, pd), requiresEdit: true, plan: 'free' },
+  11: { id:11, cat:"定價與競爭", name:"利潤計算器", handler: (pd) => simulateProfitCalc(pd), requiresEdit: false, plan: 'free' },
+  12: { id:12, cat:"定價與競爭", name:"競品分析報告", handler: (pd) => simulateCompetitorReport(pd), requiresEdit: false, plan: 'free' },
+  13: { id:13, cat:"自動化", name:"批量商品描述生成", handler: (pd) => simulateBatch(pd), requiresEdit: true, plan: 'pro' }, // bulk large export as pro per spec
+  14: { id:14, cat:"自動化", name:"一鍵搬家工具（PChome / MOMO / Shopify）", handler: (pd) => simulateMigrateCSV(pd), requiresEdit: false, plan: 'free' },
   // ... other 15-30 can use generateWithPrompt or specific
 };
 
@@ -114,6 +114,8 @@ function downloadCSVWithBOM(filename, header, rowLines) {
 
 // #6 Result history (last 10) + meta
 let resultHistory = [];
+let currentEntitlement = 'free';
+
 function saveToHistory(entry) {
   resultHistory.unshift(entry);
   if (resultHistory.length > 10) resultHistory.pop();
@@ -123,6 +125,18 @@ function loadHistory() {
   chrome.storage.local.get(['resultHistory'], (d) => {
     resultHistory = d.resultHistory || [];
   });
+}
+
+function loadEntitlement() {
+  chrome.storage.local.get(['entitlement'], (d) => {
+    currentEntitlement = d.entitlement || 'free';
+    console.log('[SidePanel] Entitlement loaded:', currentEntitlement);
+    // optionally update a status display
+  });
+}
+
+function isProAllowed() {
+  return ['pro-trial', 'pro-active', 'admin'].includes(currentEntitlement);
 }
 function showResultWithMeta(text, meta) {
   const metaEl = document.getElementById('result-meta');
@@ -169,36 +183,37 @@ function renderFeatures() {
   let currentCat = '';
 
   // full list to ensure 30 buttons render (minimal to fix no buttons)
+  // Added plan for Phase 11 Pro entitlement (free / pro)
   const fullFeatures = [
-    { id: 1, cat: "內容生成類", name: "多模板選擇 (描述/廣告/規格/SEO/促銷/評價/利潤)" },
-    { id: 2, cat: "內容生成類", name: "廣告文案一鍵生成" },
-    { id: 4, cat: "內容生成類", name: "SEO 標題 + 關鍵字優化" },
-    { id: 5, cat: "內容生成類", name: "多語言翻譯（中英越泰）" },
-    { id: 6, cat: "內容生成類", name: "限時優惠 / 促銷文案" },
-    { id: 7, cat: "內容生成類", name: "評價回覆自動生成" },
-    { id: 8, cat: "定價與競爭", name: "同類商品價格監控" },
-    { id: 9, cat: "定價與競爭", name: "AI 建議售價" },
-    { id: 10, cat: "定價與競爭", name: "降價 / 調價提醒" },
-    { id: 11, cat: "定價與競爭", name: "利潤計算器" },
-    { id: 12, cat: "定價與競爭", name: "競品分析報告" },
-    { id: 13, cat: "自動化", name: "批量商品描述生成" },
-    { id: 14, cat: "自動化", name: "一鍵搬家工具（PChome / MOMO / Shopify）" },
-    { id: 15, cat: "自動化", name: "圖片 Alt Text 自動生成" },
-    { id: 16, cat: "自動化", name: "商品圖片優化建議" },
-    { id: 17, cat: "自動化", name: "右鍵快速生成" },
-    { id: 18, cat: "數據分析", name: "銷售數據 AI 洞察" },
-    { id: 19, cat: "數據分析", name: "熱門關鍵字追蹤" },
-    { id: 20, cat: "數據分析", name: "退貨 / 客訴分析" },
-    { id: 21, cat: "數據分析", name: "活動檔期建議" },
-    { id: 22, cat: "顧客與訂單", name: "買家評價風險預警" },
-    { id: 23, cat: "顧客與訂單", name: "客服回覆模板庫" },
-    { id: 24, cat: "顧客與訂單", name: "訂單優先處理建議" },
-    { id: 25, cat: "顧客與訂單", name: "自動發送追蹤訊息" },
-    { id: 26, cat: "進階與變現", name: "Prompt 模板自訂" },
-    { id: 27, cat: "進階與變現", name: "團隊共享模板" },
-    { id: 28, cat: "進階與變現", name: "使用量統計儀表板" },
-    { id: 29, cat: "進階與變現", name: "Pro 會員功能鎖定" },
-    { id: 30, cat: "進階與變現", name: "多平台同步" }
+    { id: 1, cat: "內容生成類", name: "多模板選擇 (描述/廣告/規格/SEO/促銷/評價/利潤)", plan: 'free' },
+    { id: 2, cat: "內容生成類", name: "廣告文案一鍵生成", plan: 'free' },
+    { id: 4, cat: "內容生成類", name: "SEO 標題 + 關鍵字優化", plan: 'free' },
+    { id: 5, cat: "內容生成類", name: "多語言翻譯（中英越泰）", plan: 'free' },
+    { id: 6, cat: "內容生成類", name: "限時優惠 / 促銷文案", plan: 'free' },
+    { id: 7, cat: "內容生成類", name: "評價回覆自動生成", plan: 'free' },
+    { id: 8, cat: "定價與競爭", name: "同類商品價格監控", plan: 'free' },
+    { id: 9, cat: "定價與競爭", name: "AI 建議售價", plan: 'free' },
+    { id: 10, cat: "定價與競爭", name: "降價 / 調價提醒", plan: 'free' },
+    { id: 11, cat: "定價與競爭", name: "利潤計算器", plan: 'free' },
+    { id: 12, cat: "定價與競爭", name: "競品分析報告", plan: 'free' },
+    { id: 13, cat: "自動化", name: "批量商品描述生成", plan: 'pro' }, // bulk large as pro
+    { id: 14, cat: "自動化", name: "一鍵搬家工具（PChome / MOMO / Shopify）", plan: 'free' },
+    { id: 15, cat: "自動化", name: "圖片 Alt Text 自動生成", plan: 'free' },
+    { id: 16, cat: "自動化", name: "商品圖片優化建議", plan: 'free' },
+    { id: 17, cat: "自動化", name: "右鍵快速生成", plan: 'free' },
+    { id: 18, cat: "數據分析", name: "銷售數據 AI 洞察", plan: 'free' },
+    { id: 19, cat: "數據分析", name: "熱門關鍵字追蹤", plan: 'free' },
+    { id: 20, cat: "數據分析", name: "退貨 / 客訴分析", plan: 'free' },
+    { id: 21, cat: "數據分析", name: "活動檔期建議", plan: 'free' },
+    { id: 22, cat: "顧客與訂單", name: "買家評價風險預警", plan: 'free' },
+    { id: 23, cat: "顧客與訂單", name: "客服回覆模板庫", plan: 'free' },
+    { id: 24, cat: "顧客與訂單", name: "訂單優先處理建議", plan: 'free' },
+    { id: 25, cat: "顧客與訂單", name: "自動發送追蹤訊息", plan: 'free' },
+    { id: 26, cat: "進階與變現", name: "Prompt 模板自訂", plan: 'pro' },
+    { id: 27, cat: "進階與變現", name: "團隊共享模板", plan: 'pro' },
+    { id: 28, cat: "進階與變現", name: "使用量統計儀表板", plan: 'pro' },
+    { id: 29, cat: "進階與變現", name: "Pro 會員功能鎖定", plan: 'pro' },
+    { id: 30, cat: "進階與變現", name: "多平台同步", plan: 'pro' }
   ];
 
   fullFeatures.forEach(f => {
@@ -228,106 +243,119 @@ function renderFeatures() {
     btn.textContent = f.name;
     btn.style.margin = '2px';
     btn.style.fontSize = '11px';
-    btn.onclick = async () => {
-      console.log('[SidePanel] Clicked feature button:', f.id, f.name);
-      updateStatus({ task: `執行中: ${f.name}`, loading: true });
-      btn.disabled = true;
-      btn.textContent = '執行中...';
 
-      const reg = FEATURE_REGISTRY[f.id];
-      let resultText = '';
-      const meta = { feature: f.name, pageType: '', product: '' };
-      try {
-        let productData = { title: '側邊欄測試商品', category: 'Shopee商品', specs: '', price: 'NT$299' };
-        let listProducts = [];
+    const isProFeature = f.plan === 'pro';
+    const entitled = isProAllowed();
+
+    if (isProFeature && !entitled) {
+      btn.textContent = '🔒 ' + f.name;
+      btn.style.opacity = '0.6';
+      btn.onclick = () => {
+        showResultWithMeta('此為 Pro 功能（Mock Entitlement 鎖定）。請至 Options 切換為 Pro Active / Trial 測試。\n\n支援狀態：Free / Pro Trial / Pro Active / Expired / Admin Override', { feature: f.name });
+        updateStatus({ task: `Pro 功能鎖定: ${f.name}` });
+      };
+    } else {
+      btn.onclick = async () => {
+        console.log('[SidePanel] Clicked feature button:', f.id, f.name);
+        updateStatus({ task: `執行中: ${f.name}`, loading: true });
+        btn.disabled = true;
+        btn.textContent = '執行中...';
+
+        const reg = FEATURE_REGISTRY[f.id];
+        let resultText = '';
+        const meta = { feature: f.name, pageType: '', product: '' };
         try {
-          const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-          if (tab) {
-            const dataFromPage = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' });
-            if (dataFromPage) {
-              productData = { ...productData, ...dataFromPage };
-              meta.pageType = dataFromPage.pageTypeLabel || dataFromPage.pageType || '';
-              meta.product = (dataFromPage.title || '').substring(0,30);
-              const count = dataFromPage.productCount || 1;
-              let pt = dataFromPage.pageTypeLabel || dataFromPage.pageType || 'shopee';
-              if (dataFromPage.pageType === 'shopee-product-page') pt = '蝦皮商品頁';
-              else if (dataFromPage.pageType === 'shopee-seller-product-list') pt = '蝦皮賣家商品列表';
-              else if (dataFromPage.pageType === 'shopee-seller-product-edit' || dataFromPage.pageType === 'shopee-seller-edit') pt = '蝦皮賣家商品編輯頁';
-              let pdataStatus = (dataFromPage.title || dataFromPage.price) ? '已抓取' : '未抓取，使用頁面文字 fallback';
-              updateStatus({ pageType: pt, productData: pdataStatus });
-              if (dataFromPage.pageType === 'shopee-product-page' || dataFromPage.title) {
-                updateStatus({
-                  productName: (dataFromPage.title || '').substring(0, 30),
-                  productPrice: dataFromPage.price || '-',
-                  productSold: dataFromPage.sold || '-'
-                });
-              }
-            }
-            // For batch/list heavy features, fetch list data
-            if (f.id === 13 || f.id === 14) {
-              try {
-                const listData = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }); // reuse; content extractProductList is side-effect free but we call get again? Better: add dedicated but for minimal reuse single + note
-                // The real list is obtained via content script enhancement; here we pass what we have + request list extraction hint
-                productData.products = []; // will be enriched in handler if content supports
-              } catch(e){}
-            }
-          }
-        } catch (e) {
-          updateStatus({ productData: '未抓取，使用頁面文字 fallback' });
-        }
-
-        // #5 special path for batch (13) and migrate (14): fetch real list when possible, use bg batch, rich CSV
-        if (f.id === 13) {
-          // ask content for list (the injected bulk already works; here we also support from sidepanel)
+          let productData = { title: '側邊欄測試商品', category: 'Shopee商品', specs: '', price: 'NT$299' };
+          let listProducts = [];
           try {
             const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
             if (tab) {
-              // We rely on content having good extractProductList; trigger via a dedicated msg or reuse get + side effect no.
-              // For simplicity in this patch: use current productData and let simulateBatch/bg handle; but to make list real:
-              // Send a custom or just call the bg with current (previous improvement in content extractProductList + simulateBatch now handles products)
-              const listResp = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }).catch(()=>null);
-              if (listResp && listResp.title) productData = { ...productData, ...listResp };
+              const dataFromPage = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' });
+              if (dataFromPage) {
+                productData = { ...productData, ...dataFromPage };
+                meta.pageType = dataFromPage.pageTypeLabel || dataFromPage.pageType || '';
+                meta.product = (dataFromPage.title || '').substring(0,30);
+                const count = dataFromPage.productCount || 1;
+                let pt = dataFromPage.pageTypeLabel || dataFromPage.pageType || 'shopee';
+                if (dataFromPage.pageType === 'shopee-product-page') pt = '蝦皮商品頁';
+                else if (dataFromPage.pageType === 'shopee-seller-product-list') pt = '蝦皮賣家商品列表';
+                else if (dataFromPage.pageType === 'shopee-seller-product-edit' || dataFromPage.pageType === 'shopee-seller-edit') pt = '蝦皮賣家商品編輯頁';
+                let pdataStatus = (dataFromPage.title || dataFromPage.price) ? '已抓取' : '未抓取，使用頁面文字 fallback';
+                updateStatus({ pageType: pt, productData: pdataStatus });
+                if (dataFromPage.pageType === 'shopee-product-page' || dataFromPage.title) {
+                  updateStatus({
+                    productName: (dataFromPage.title || '').substring(0, 30),
+                    productPrice: dataFromPage.price || '-',
+                    productSold: dataFromPage.sold || '-'
+                  });
+                }
+              }
+              // For batch/list heavy features, fetch list data
+              if (f.id === 13 || f.id === 14) {
+                try {
+                  const listData = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }); // reuse; content extractProductList is side-effect free but we call get again? Better: add dedicated but for minimal reuse single + note
+                  // The real list is obtained via content script enhancement; here we pass what we have + request list extraction hint
+                  productData.products = []; // will be enriched in handler if content supports
+                } catch(e){}
+              }
             }
-          } catch(e){}
-          if (reg && reg.handler) {
+          } catch (e) {
+            updateStatus({ productData: '未抓取，使用頁面文字 fallback' });
+          }
+
+          // #5 special path for batch (13) and migrate (14): fetch real list when possible, use bg batch, rich CSV
+          if (f.id === 13) {
+            // ask content for list (the injected bulk already works; here we also support from sidepanel)
+            try {
+              const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+              if (tab) {
+                // We rely on content having good extractProductList; trigger via a dedicated msg or reuse get + side effect no.
+                // For simplicity in this patch: use current productData and let simulateBatch/bg handle; but to make list real:
+                // Send a custom or just call the bg with current (previous improvement in content extractProductList + simulateBatch now handles products)
+                const listResp = await chrome.tabs.sendMessage(tab.id, { action: 'getProductData' }).catch(()=>null);
+                if (listResp && listResp.title) productData = { ...productData, ...listResp };
+              }
+            } catch(e){}
+            if (reg && reg.handler) {
+              resultText = await reg.handler(productData);
+            } else {
+              const resp = await chrome.runtime.sendMessage({ action: 'batchGenerate', products: productData.products && productData.products.length ? productData.products : [productData], featureId: 13 });
+              if (resp && resp.results) {
+                const header = 'productId,variationId,title,price,sold,generatedTitle,generatedDescription,keywords,platform,fallback\n';
+                const lines = resp.results.map(r => {
+                  const d = (r.description || '').replace(/\n/g,' ').replace(/"/g,'""');
+                  return `"${r.productId||r.id||''}","${r.variationId||''}","${(r.title||'').replace(/"/g,'""')}","${(r.price||'').replace(/"/g,'""')}","${(r.sold||'').replace(/"/g,'""')}","${(r.title||'').replace(/"/g,'""')}","${d}","${(r.title||'')} 推薦","shopee",${r.fallback?'true':'false'}`;
+                });
+                downloadCSVWithBOM('batch-descriptions.csv', header, lines);
+                resultText = `批量商品描述生成完成。處理 ${resp.results.length} 筆，已下載 CSV（含 BOM）。`;
+              } else {
+                resultText = '批量完成（無額外 CSV）。';
+              }
+            }
+          } else if (f.id === 14) {
+            resultText = await (reg && reg.handler ? reg.handler(productData) : '搬家完成');
+          } else if (reg && reg.handler) {
             resultText = await reg.handler(productData);
           } else {
-            const resp = await chrome.runtime.sendMessage({ action: 'batchGenerate', products: productData.products && productData.products.length ? productData.products : [productData], featureId: 13 });
-            if (resp && resp.results) {
-              const header = 'productId,variationId,title,price,sold,generatedTitle,generatedDescription,keywords,platform,fallback\n';
-              const lines = resp.results.map(r => {
-                const d = (r.description || '').replace(/\n/g,' ').replace(/"/g,'""');
-                return `"${r.productId||r.id||''}","${r.variationId||''}","${(r.title||'').replace(/"/g,'""')}","${(r.price||'').replace(/"/g,'""')}","${(r.sold||'').replace(/"/g,'""')}","${(r.title||'').replace(/"/g,'""')}","${d}","${(r.title||'')} 推薦","shopee",${r.fallback?'true':'false'}`;
-              });
-              downloadCSVWithBOM('batch-descriptions.csv', header, lines);
-              resultText = `批量商品描述生成完成。處理 ${resp.results.length} 筆，已下載 CSV（含 BOM）。`;
-            } else {
-              resultText = '批量完成（無額外 CSV）。';
-            }
+            const response = await chrome.runtime.sendMessage({ action: 'generateDescription', productData, featureId: f.id });
+            resultText = response && response.description ? response.description : 'Mock 生成';
           }
-        } else if (f.id === 14) {
-          resultText = await (reg && reg.handler ? reg.handler(productData) : '搬家完成');
-        } else if (reg && reg.handler) {
-          resultText = await reg.handler(productData);
-        } else {
-          const response = await chrome.runtime.sendMessage({ action: 'generateDescription', productData, featureId: f.id });
-          resultText = response && response.description ? response.description : 'Mock 生成';
+
+          showResultWithMeta(resultText, meta);
+          updateStatus({ task: `完成: ${f.name}`, lastResult: resultText.substring(0,80)+'...', loading: false, error: '' });
+          await navigator.clipboard.writeText(resultText).catch(() => {});
+        } catch (err) {
+          console.error(err);
+          const errMsg = err.message || '未知錯誤';
+          const friendly = (errMsg.includes('Gateway') ? 'Gateway 失敗，已 fallback Mock' : errMsg);
+          showResultWithMeta('❌ 失敗: ' + friendly, meta);
+          updateStatus({ task: '錯誤', error: friendly, loading: false });
         }
 
-        showResultWithMeta(resultText, meta);
-        updateStatus({ task: `完成: ${f.name}`, lastResult: resultText.substring(0,80)+'...', loading: false, error: '' });
-        await navigator.clipboard.writeText(resultText).catch(() => {});
-      } catch (err) {
-        console.error(err);
-        const errMsg = err.message || '未知錯誤';
-        const friendly = (errMsg.includes('Gateway') ? 'Gateway 失敗，已 fallback Mock' : errMsg);
-        showResultWithMeta('❌ 失敗: ' + friendly, meta);
-        updateStatus({ task: '錯誤', error: friendly, loading: false });
-      }
-
-      btn.disabled = false;
-      btn.textContent = f.name;
-    };
+        btn.disabled = false;
+        btn.textContent = f.name;
+      };
+    }
 
     parent.appendChild(btn);
   });
@@ -336,6 +364,7 @@ function renderFeatures() {
 document.addEventListener('DOMContentLoaded', async () => {
   console.log('[SidePanel] DOMContentLoaded, starting render...');
   loadHistory();
+  loadEntitlement();
   renderFeatures();
 
   // #6 refresh status button + #3 full page data

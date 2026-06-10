@@ -13,8 +13,16 @@
   <label>Gemini API Key</label>
   <input type="password" id="gemini-key" placeholder="AIza...">
   
-  <h3>Pro 模式 (解鎖 26-30 進階功能)</h3>
-  <label><input type="checkbox" id="pro"> 啟用 Pro 會員 (本地模擬)</label>
+  <h3>Mock Entitlement (開發用，Phase 11 Pro 權限)</h3>
+  <label>權限狀態 (Mock)</label>
+  <select id="entitlement">
+    <option value="free">Free</option>
+    <option value="pro-trial">Pro Trial</option>
+    <option value="pro-active">Pro Active</option>
+    <option value="expired">Expired</option>
+    <option value="admin">Admin Override</option>
+  </select>
+  <small style="color:#c00">此為本地模擬，不模擬真實付款。Pro 功能會顯示 🔒 鎖定圖示。</small>
   
   <h3>其他</h3>
   <label>預設偏好模型</label>

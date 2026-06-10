@@ -3,7 +3,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   const claude = document.getElementById('claude-key');
   const gemini = document.getElementById('gemini-key');
-  const pro = document.getElementById('pro');
+  const entitlementSel = document.getElementById('entitlement');
   const prefer = document.getElementById('prefer');
   const saveBtn = document.getElementById('save');
   const status = document.getElementById('status');
@@ -13,10 +13,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const gwKey = document.getElementById('gw-key');
   const gwTest = document.getElementById('gw-test');
 
-  chrome.storage.sync.get(['claudeKey', 'geminiKey', 'proEnabled', 'preferModel'], (res) => {
+  chrome.storage.sync.get(['claudeKey', 'geminiKey', 'entitlement', 'preferModel'], (res) => {
     if (res.claudeKey) claude.value = res.claudeKey;
     if (res.geminiKey) gemini.value = res.geminiKey;
-    pro.checked = !!res.proEnabled;
+    if (entitlementSel && res.entitlement) entitlementSel.value = res.entitlement;
     if (res.preferModel) prefer.value = res.preferModel;
   });
 
@@ -30,14 +30,14 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.sync.set({
       claudeKey: claude.value.trim(),
       geminiKey: gemini.value.trim(),
-      proEnabled: pro.checked,
+      entitlement: entitlementSel ? entitlementSel.value : 'free',
       preferModel: prefer.value
     }, () => {
       // also save gateway to local
       const gurl = gwUrl ? gwUrl.value.trim() : '';
       const gkey = gwKey ? gwKey.value.trim() : '';
       chrome.storage.local.set({ gatewayUrl: gurl, gatewayKey: gkey }, () => {
-        status.textContent = '✅ 所有設定已儲存！可立即使用全部 30 功能（Gateway 優先）';
+        status.textContent = '✅ 所有設定已儲存！Mock Entitlement 已更新，可測試 Pro 鎖定。';
         setTimeout(() => status.textContent = '', 2500);
       });
     });

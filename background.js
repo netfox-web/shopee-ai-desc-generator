@@ -236,10 +236,12 @@ async function generateWithGatewayOrMock(productData, featureId) {
 // Handle all messages for 30 features
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'generateDescription') {
-    chrome.storage.sync.get(['claudeKey', 'geminiKey', 'proEnabled'], async (keys) => {
-      const isPro = keys.proEnabled || false;
-      if (request.featureId >= 26 && !isPro) {
-        sendResponse({ success: false, error: '此為 Pro 功能，請在選項頁開啟 Pro 模式 (模擬)' });
+    chrome.storage.sync.get(['claudeKey', 'geminiKey', 'entitlement'], async (keys) => {
+      const entitlement = keys.entitlement || 'free';
+      const isProAllowed = ['pro-trial', 'pro-active', 'admin'].includes(entitlement);
+      const proFeatures = [13,26,27,28,29,30];
+      if (proFeatures.includes(request.featureId) && !isProAllowed) {
+        sendResponse({ success: false, error: `此為 Pro 功能 (當前 Mock Entitlement: ${entitlement})。請至 Options 切換狀態測試。` });
         return;
       }
       // #7 Use gateway-first path (secure, no raw keys in extension for prod)
