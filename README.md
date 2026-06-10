@@ -67,3 +67,37 @@ git push -u origin main
 - [ ] 重新載入擴充 + 關開 Side Panel 後功能仍正常
 
 驗收路徑: 開啟 Side Panel -> 點以上 12 個 -> 檢查結果區/狀態/下載/填入。使用 mock 模式。
+
+## 測試與 Smoke Test (Phase 8)
+
+執行自動化 smoke test（無需真實蝦皮登入）：
+
+```bash
+node scripts/smoke-test.js
+```
+
+預期輸出：所有項目 PASS，最後 "All smoke tests PASSED."
+
+涵蓋項目：
+- feature registry 30 功能數量與 id 不重複
+- parser pageType 判斷（商品頁 / 列表頁 / 編輯頁 / 不支援頁）
+- 商品頁 productData 正規化（title, price, sold, rating, reviewCount, image, url, shopName, category）
+- 賣家列表 product list 正規化（含 fallback）
+- mock output 不含亂碼、不含 prompt 原文、結構化繁中
+- CSV 產生含 UTF-8 BOM
+- gateway config 不接受 raw provider key（只接受 issued key）
+
+手動 Smoke Test 文件（補充在 README）：
+- Reload 擴充前後：狀態區、按鈕反應、最近結果保留
+- 商品頁測試：狀態顯示「蝦皮商品頁」、資料已抓取、名稱/價/售
+- 賣家列表頁測試：批量按鈕出現、CSV 下載（含 BOM）
+- 賣家編輯頁測試：填入功能正常
+- 批量 CSV 測試：下載後 Excel 開啟無亂碼
+- Gateway fallback 測試：未設或失敗時顯示 fallback 提示，結果區仍有輸出
+
+常見錯誤排除：
+- 測試失敗指向具體 parser / mock / gateway 檢查
+- CSV 亂碼：確認 BOM 存在
+- Registry 數量錯：檢查 sidepanel.js fullFeatures 陣列
+
+注意：測試不碰 production、不 deploy。
