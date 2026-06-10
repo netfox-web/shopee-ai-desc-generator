@@ -63,9 +63,12 @@ async function callGemini(prompt, apiKey) {
   return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Gemini 回應失敗';
 }
 
-async function generateWithAI(productData, featureId, apiKeys) {
-  const template = FEATURE_PROMPTS[featureId] || FEATURE_PROMPTS[1];
-  const prompt = template.replace(/\{(\w+)\}/g, (match, key) => productData[key] || match);
+async function generateWithAI(productData, featureId, apiKeys, customTemplate) {
+  let templateStr = FEATURE_PROMPTS[featureId] || FEATURE_PROMPTS[1];
+  if (customTemplate && customTemplate.promptBody) {
+    templateStr = customTemplate.promptBody;
+  }
+  const prompt = templateStr.replace(/\{(\w+)\}/g, (match, key) => productData[key] || match);
 
   let description = '';
   const preferClaude = apiKeys.claudeKey && (!apiKeys.geminiKey || Math.random() > 0.5);
@@ -96,36 +99,189 @@ async function generateWithAI(productData, featureId, apiKeys) {
 }
 
 function generateSmartMock(productData, featureId) {
-  const base = productData.title || '優質商品';
-  const flavor = FEATURE_PROMPTS[featureId] ? FEATURE_PROMPTS[featureId].split('。')[0] : '高品質';
-  return `${base} - ${flavor}。${productData.specs || '適合各種場合'}。立即下單享優惠！`;
+  const title = (productData.title || '此商品').substring(0, 30);
+  const price = productData.price || 'NT$299';
+  const shop = productData.shopName || '';
+  // Structured pure Trad Chinese for ALL core features (#4 full coverage). No prompt leak, no garble.
+  switch (featureId) {
+    case 1:
+    case 2:
+      return `廣告文案一鍵生成\n\n商品：${title}${shop ? '（' + shop + '）' : ''}\n建議文案 1：${title} 熱銷爆款！限時優惠，品質保證，千萬用戶推薦，立即下單享免運。\n建議文案 2：獨家${title}，高評價好物，省錢又實用，錯過可惜！\n關鍵字：${title} 熱賣 限時優惠 免運 爆款\n使用建議：適合 FB/蝦皮首頁廣告，搭配限時折扣使用效果佳。`;
+    case 3:
+      return `規格說明\n\n商品：${title}\n規格亮點：高品質材質、耐用設計、相容多平台。尺寸/重量依實際商品為準。\n建議文案：${title} 採用優質原料，細節完美，適合日常與專業使用。\n關鍵字：規格 材質 尺寸 相容\n使用建議：技術買家頁面或詳情頁使用 bullet 呈現。`;
+    case 4:
+      return `SEO 標題 + 關鍵字優化\n\n商品：${title}\n建議標題 1：${title} | 官方正品 快速出貨 高評價\n建議標題 2：${title} 推薦 蝦皮熱銷款 24小時出貨\n建議標題 3：買${title} 就選我們 品質保證 售後完善\n關鍵字：${title}, 熱銷, 正品, 免運, 推薦\n使用建議：主標題控制在 60 字內，融入 2-3 個高搜尋關鍵字，描述前 150 字重複一次主關鍵字。`;
+    case 5:
+      return `多語言翻譯\n\n商品：${title}\n繁體中文：${title} 高品質熱銷商品\nEnglish: ${title} Premium Quality Best Seller\nTiếng Việt: ${title} Hàng Chính Hãng Bán Chạy\nไทย: ${title} สินค้าขายดี คุณภาพเยี่ยม\n關鍵字：多語言 國際 翻譯\n使用建議：用於跨境或外籍買家，建議人工再校對品牌名與專業術語。`;
+    case 6:
+      return `限時優惠 / 促銷文案\n\n商品：${title}\n建議文案 1：限時 24 小時！${title} 特價 ${price}，買一送一，數量有限，下單從速！\n建議文案 2：年中慶特惠，${title} 原價更高，現在只要 ${price}，再送精美小禮。\n關鍵字：限時優惠 特賣 折扣 秒殺\n使用建議：搭配倒數計時器與紅色按鈕，轉換率最高。`;
+    case 7:
+      return `評價回覆自動生成\n\n商品：${title}\n建議回覆 1：感謝您的支持！很高興您喜歡${title}，如有任何問題隨時聯絡我們。\n建議回覆 2：親愛的買家，謝謝您給予的好評！您的肯定是我們前進的動力，期待再次為您服務。\n建議回覆 3：感謝評價！商品有任何使用疑問，歡迎私訊客服，我們會盡快協助。\n關鍵字：感謝 好評 回購 客服\n使用建議：依評價內容微調，負評務必道歉+解決方案+補償。`;
+    case 8:
+    case 10:
+      return `價格監控 / 調價提醒\n\n商品：${title}\n競品參考價：299 / 349 / 279\n建議：可考慮降至 269-289 以提升競爭力。\n關鍵字：價格 競爭 調價\n使用建議：定期執行監控，結合銷售數據決定最終價。`;
+    case 9:
+      const bp = parseInt((productData.price || '300').replace(/\D/g, '')) || 300;
+      return `AI 建議售價\n\n商品：${title}\n建議售價 1（保守）：NT$${bp}（低風險，適合新品測試）\n建議售價 2（平衡）：NT$${Math.round(bp * 1.15)}（市場主流，利潤與量兼顧）\n建議售價 3（激進）：NT$${Math.round(bp * 1.35)}（高端定位，強調獨特性）\n關鍵字：定價 利潤 競爭\n使用建議：參考競品後選擇平衡方案，監控銷量 3 天再微調。`;
+    case 11:
+      const sp = parseInt((productData.price || '300').replace(/\D/g, '')) || 300;
+      const c = 180, sh = 30, fe = Math.round(sp * 0.06);
+      const pr = sp - c - sh - fe;
+      const roiV = c > 0 ? ((pr / c) * 100).toFixed(0) : '0';
+      const sug = Math.round(sp * 1.25);
+      return `利潤計算器\n\n商品：${title}\n售價：NT$${sp}\n成本：NT$${c}（預估）\n運費：NT$${sh}\n平台手續費：約 NT$${fe}\n預估利潤：NT$${pr}\nROI：約 ${roiV}%\n建議：若想達到 50% ROI，可將售價調整至 NT$${sug} 或降低包材成本。\n使用建議：實際成本請填入真實數字，運費依宅配或超商調整。`;
+    case 12:
+      return `競品分析報告\n\n商品：${title}\n比較重點：價格優勢明顯，但規格描述可再強化。\n建議：強調獨特賣點 + 增加使用者證言。\n關鍵字：競品 優勢 差異化\n使用建議：用於定價會議或廣告策略調整。`;
+    case 13:
+      return `批量商品描述生成\n\n處理筆數：3\n每筆已生成對應描述（見 CSV）。\n成功 3 / 失敗 0 / fallback 0\n關鍵字：批量 自動化\n使用建議：列表頁使用 injected 批量按鈕可一次處理多筆並下載。`;
+    case 14:
+      return `一鍵搬家工具\n\n來源平台：PChome/MOMO/Shopify 模擬\n已轉換標題與描述為 Shopee 格式。\n關鍵字：搬家 跨平台\n使用建議：選擇對應平台 CSV 下載，人工校對後上架。`;
+    default:
+      return `${title} 優質商品推薦。\n建議文案：${title} 品質優良，適合日常使用，值得信賴。\n關鍵字：${title} 推薦 熱賣\n使用建議：可直接用於商品描述或廣告。`;
+  }
+}
+
+// Event recording for Phase 10 Analytics (local only, no sensitive data)
+function recordUsageEvent(event) {
+  chrome.storage.local.get(['usageEvents'], (res) => {
+    let events = res.usageEvents || [];
+    events.unshift(event);
+    if (events.length > 100) events = events.slice(0, 100); // keep last 100
+    chrome.storage.local.set({ usageEvents: events });
+  });
+}
+
+function getCategoryForFeature(featureId) {
+  if ([1,2,3,4,5,6,7].includes(featureId)) return '內容生成類';
+  if ([8,9,10,11,12].includes(featureId)) return '定價與競爭';
+  if ([13,14,15,16,17].includes(featureId)) return '自動化';
+  if ([18,19,20,21].includes(featureId)) return '數據分析';
+  if ([22,23,24,25].includes(featureId)) return '顧客與訂單';
+  return '進階與變現';
+}
+
+// #7 Secure AI Gateway (issued key only, NEVER raw provider keys in extension or logs)
+async function callGateway(productData, featureId, gateway) {
+  if (!gateway || !gateway.url) throw new Error('Gateway not configured');
+  const controller = new AbortController();
+  const t = setTimeout(() => controller.abort(), 15000);
+  const reqId = 'gw-' + Date.now() + '-' + Math.random().toString(36).slice(2,8);
+  try {
+    const promptTemplate = FEATURE_PROMPTS[featureId] || FEATURE_PROMPTS[1];
+    const body = {
+      featureId,
+      productData,
+      promptTemplate,
+      requestId: reqId
+    };
+    const resp = await fetch(gateway.url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Issued-Key': gateway.key || '',
+        'X-Request-ID': reqId
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal
+    });
+    clearTimeout(t);
+    if (!resp.ok) {
+      const txt = await resp.text().catch(() => '');
+      throw new Error('Gateway HTTP ' + resp.status + ' ' + txt.substring(0,120));
+    }
+    const data = await resp.json();
+    // Expect { description, text, result } or similar from your gateway backend
+    const desc = data.description || data.text || data.result || (typeof data === 'string' ? data : JSON.stringify(data));
+    // Usage estimate hook (if gateway returns)
+    if (data.usage) {
+      chrome.storage.local.get(['usageStats'], (res) => {
+        const stats = res.usageStats || { total: 0, byFeature: {} };
+        stats.total = (stats.total || 0) + 1;
+        stats.byFeature[featureId] = (stats.byFeature[featureId] || 0) + 1;
+        chrome.storage.local.set({ usageStats: stats });
+      });
+    }
+    return desc;
+  } catch (e) {
+    clearTimeout(t);
+    console.warn('[Gateway] call failed, will fallback to mock:', e && e.message ? e.message : e);
+    throw e;
+  }
+}
+
+async function generateWithGatewayOrMock(productData, featureId, _apiKeys, customTemplate) {
+  // Priority: Gateway (issued key) > direct keys (dev only) > mock
+  // SECURITY: never log raw keys; gateway key is "issued" token only.
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['gatewayUrl', 'gatewayKey'], async (g) => {
+      const gw = (g.gatewayUrl && g.gatewayKey) ? { url: g.gatewayUrl, key: g.gatewayKey } : null;
+      if (gw && gw.url) {
+        try {
+          const desc = await callGateway(productData, featureId, gw);
+          return resolve(desc);
+        } catch (e) {
+          // explicit fallback message in result
+          const mock = generateSmartMock(productData, featureId) + '\n\n（Gateway 連線失敗，已自動 fallback Mock 模式）';
+          return resolve(mock);
+        }
+      }
+      // Fallback to previous direct or mock (direct keys kept for dev compatibility only)
+      chrome.storage.sync.get(['claudeKey', 'geminiKey'], async (keys) => {
+        const apiKeys = { claudeKey: keys.claudeKey, geminiKey: keys.geminiKey };
+        // NOTE: For production security, configure a Gateway (see options) instead of storing raw provider keys here.
+        const desc = await generateWithAI(productData, featureId, apiKeys, customTemplate); // re-use existing (may hit mock)
+        resolve(desc);
+      });
+    });
+  });
 }
 
 // Handle all messages for 30 features
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === 'generateDescription') {
-    chrome.storage.sync.get(['claudeKey', 'geminiKey', 'proEnabled'], async (keys) => {
-      const apiKeys = { claudeKey: keys.claudeKey, geminiKey: keys.geminiKey };
-      const isPro = keys.proEnabled || false;
-
-      if (request.featureId >= 26 && !isPro) {
-        sendResponse({ success: false, error: '此為 Pro 功能，請在選項頁開啟 Pro 模式 (模擬)' });
+    chrome.storage.sync.get(['claudeKey', 'geminiKey', 'entitlement'], async (keys) => {
+      const entitlement = keys.entitlement || 'free';
+      const isProAllowed = ['pro-trial', 'pro-active', 'admin'].includes(entitlement);
+      const proFeatures = [13,26,27,28,29,30];
+      if (proFeatures.includes(request.featureId) && !isProAllowed) {
+        sendResponse({ success: false, error: `此為 Pro 功能 (當前 Mock Entitlement: ${entitlement})。請至 Options 切換狀態測試。` });
         return;
       }
+      // #7 Use gateway-first path (secure, no raw keys in extension for prod)
+      const startTime = Date.now();
+      const desc = await generateWithGatewayOrMock(request.productData, request.featureId, null, request.template);
+      const endTime = Date.now();
+      const durationMs = endTime - startTime;
 
-      const desc = await generateWithAI(request.productData, request.featureId, apiKeys);
+      // Record event (Phase 10)
+      const mode = (await new Promise(r => chrome.storage.local.get(['gatewayUrl'], d => r(!!d.gatewayUrl)))) ? 'Gateway' : 'Mock';
+      recordUsageEvent({
+        eventId: 'evt-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+        featureId: request.featureId,
+        featureName: `feature-${request.featureId}`,
+        category: getCategoryForFeature(request.featureId),
+        pageType: request.productData.pageType || 'unknown',
+        productId: request.productData.productId || request.productData.id || null,
+        mode: mode,
+        status: 'success',
+        startedAt: startTime,
+        endedAt: endTime,
+        durationMs: durationMs,
+        outputLength: desc ? desc.length : 0
+      });
+
       sendResponse({ success: true, description: desc, featureId: request.featureId });
     });
     return true;
   }
 
   if (request.action === 'batchGenerate') {
-    // Feature 13
+    // Feature 13 - gateway aware per item
     chrome.storage.sync.get(['claudeKey', 'geminiKey'], async (keys) => {
       const results = [];
-      for (const prod of request.products) {
-        const desc = await generateWithAI(prod, request.featureId || 1, { claudeKey: keys.claudeKey, geminiKey: keys.geminiKey });
-        results.push({ ...prod, description: desc });
+      for (const prod of request.products || []) {
+        const desc = await generateWithGatewayOrMock(prod, request.featureId || 1, null, request.template);
+        results.push({ ...prod, description: desc, generatedDescription: desc });
       }
       sendResponse({ success: true, results });
     });
@@ -141,19 +297,84 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
 
   if (request.action === 'getAnalytics') {
-    // Feature 18,28
-    chrome.storage.local.get(['usageStats', 'salesData'], (data) => {
-      sendResponse({ success: true, stats: data.usageStats || {}, sales: data.salesData || '無數據' });
+    // Enhanced for Phase 10 Analytics
+    chrome.storage.local.get(['usageStats', 'usageEvents', 'salesData'], (data) => {
+      const events = data.usageEvents || [];
+      // Compute simple stats from events
+      const now = Date.now();
+      const todayStart = new Date().setHours(0,0,0,0);
+      const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).getTime();
+
+      const todayEvents = events.filter(e => e.startedAt >= todayStart);
+      const monthEvents = events.filter(e => e.startedAt >= monthStart);
+
+      const byFeature = {};
+      events.forEach(e => {
+        byFeature[e.featureId] = (byFeature[e.featureId] || 0) + 1;
+      });
+      const topFeatures = Object.entries(byFeature).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([id,count]) => ({featureId: id, count}));
+
+      const mockCount = events.filter(e => e.mode === 'Mock').length;
+      const gatewayCount = events.filter(e => e.mode === 'Gateway').length;
+      const total = events.length;
+      const failureCount = events.filter(e => e.status === 'error').length;
+
+      const computed = {
+        today: todayEvents.length,
+        month: monthEvents.length,
+        total,
+        topFeatures,
+        modeRatio: { Mock: mockCount, Gateway: gatewayCount },
+        failureRate: total ? (failureCount / total * 100).toFixed(1) + '%' : '0%',
+        recentEvents: events.slice(0, 20)
+      };
+
+      sendResponse({ 
+        success: true, 
+        stats: data.usageStats || {}, 
+        sales: data.salesData || '無數據',
+        events: events,
+        computed: computed
+      });
     });
     return true;
   }
 
   if (request.action === 'migrateFromPlatform') {
-    // Feature 14
-    chrome.storage.sync.get(['claudeKey', 'geminiKey'], async (keys) => {
-      const prompt = FEATURE_PROMPTS[14].replace('{source_platform}', request.platform).replace('{raw_data}', JSON.stringify(request.rawData));
-      const desc = await generateWithAI({ title: request.rawData.title || '' }, 14, { claudeKey: keys.claudeKey, geminiKey: keys.geminiKey });
+    // Feature 14 - gateway aware
+    chrome.storage.sync.get(['claudeKey', 'geminiKey'], async () => {
+      const desc = await generateWithGatewayOrMock({ title: request.rawData && request.rawData.title || '' }, 14, null, request.template);
       sendResponse({ success: true, migrated: desc });
+    });
+    return true;
+  }
+
+  if (request.action === 'testGateway') {
+    // #7 test connection from sidepanel/options
+    chrome.storage.local.get(['gatewayUrl', 'gatewayKey'], async (g) => {
+      if (!g.gatewayUrl) {
+        sendResponse({ success: false, error: '未設定 Gateway URL' });
+        return;
+      }
+      try {
+        const r = await fetch(g.gatewayUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Issued-Key': g.gatewayKey || '' },
+          body: JSON.stringify({ featureId: 0, productData: { title: 'health-check' }, requestId: 'health-' + Date.now() })
+        });
+        const ok = r.ok;
+        sendResponse({ success: ok, status: r.status, message: ok ? 'Gateway 連線成功' : 'Gateway 回應非 2xx' });
+      } catch (e) {
+        sendResponse({ success: false, error: (e && e.message) || '連線失敗' });
+      }
+    });
+    return true;
+  }
+
+  if (request.action === 'getGatewayStatus') {
+    chrome.storage.local.get(['gatewayUrl', 'gatewayKey'], (g) => {
+      const configured = !!(g.gatewayUrl && g.gatewayKey);
+      sendResponse({ success: true, mode: configured ? 'Gateway' : 'Mock', url: g.gatewayUrl ? g.gatewayUrl.replace(/https?:\/\//,'').substring(0,40) + '...' : '' });
     });
     return true;
   }
